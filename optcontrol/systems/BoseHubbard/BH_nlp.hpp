@@ -1,5 +1,5 @@
-#ifndef OCBOSEHUBBARD_NLP_HPP
-#define OCBOSEHUBBARD_NLP_HPP
+#ifndef BH_NLP_HPP
+#define BH_NLP_HPP
 
 #include "IpTNLP.hpp"
 #include "IpIpoptCalculatedQuantities.hpp"
@@ -9,8 +9,7 @@
 
 #include "OptimalControl.hpp"
 #include "ControlBasis.hpp"
-#include "TimeStepperTEBDfast.hpp"
-#include "HamiltonianBH.hpp"
+#include "BH_tDMRG.hpp"
 #include <assert.h>
 #include <string>
 #include <fstream>
@@ -18,7 +17,7 @@
 using namespace Ipopt;
 using OC_BH = OptimalControl<TimeStepperTEBDfast,HamiltonianBH>;
 
-class OCBoseHubbard_nlp : public TNLP
+class BH_nlp : public TNLP
 {
 private:
   OC_BH& optControlProb;
@@ -28,11 +27,11 @@ private:
 
 public:
   /** default constructor */
-  OCBoseHubbard_nlp(OC_BH& optControlProb, ControlBasis& bControl,
+  BH_nlp(OC_BH& optControlProb, ControlBasis& bControl,
                     std::vector<double>& times, bool cacheProgress = false);
 
   /** default destructor */
-  virtual ~OCBoseHubbard_nlp();
+  virtual ~BH_nlp();
 
   virtual bool get_nlp_info(Ipopt::Index& n, Ipopt::Index& m, Ipopt::Index& nnz_jac_g,
                             Ipopt::Index& nnz_h_lag, IndexStyleEnum& index_style);
@@ -72,12 +71,6 @@ public:
                                Ipopt::Index ls_trials,
                                const IpoptData* ip_data,
                                IpoptCalculatedQuantities* ip_cq);
-
-  // virtual Ipopt::Index get_number_of_nonlinear_variables();
-  //
-  // virtual bool get_list_of_nonlinear_variables(Ipopt::Index num_nonlin_vars,
-  //                                              Ipopt::Index* pos_nonlin_vars);
-
 
 };
 

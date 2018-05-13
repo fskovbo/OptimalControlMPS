@@ -1,5 +1,5 @@
-#ifndef CONTROLBASIS_H
-#define CONTROLBASIS_H
+#ifndef CONTROLBASIS_HPP
+#define CONTROLBASIS_HPP
 
 #include <vector>
 #include <iterator>

@@ -1,5 +1,5 @@
-#ifndef BOSON_H
-#define BOSON_H
+#ifndef BH_SITES_H
+#define BH_SITES_H
 #include "itensor/mps/siteset.h"
 
 namespace itensor {
@@ -52,7 +52,7 @@ class BosonSiteSet : public SiteSet
 
   };
 
-using Boson = BosonSiteSet<BosonSite>;
+using BoseHubbard = BosonSiteSet<BosonSite>;
 
 class BosonSite {
   IQIndex s;

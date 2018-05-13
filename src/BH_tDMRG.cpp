@@ -1,11 +1,17 @@
-#include "TimeStepperTEBDfast.hpp"
+#include "BH_tDMRG.hpp"
 
-TimeStepperTEBDfast::TimeStepperTEBDfast(const SiteSet& sites, const double J, const double tstep, const Args& args)
+BH_tDMRG::BH_tDMRG(const SiteSet& sites, const double J, const double tstep, const Args& args)
   : J(J), sites(sites), args(args) {
   setTstep(tstep);
+
+  auto ampo = AutoMPO(sites);
+  for(int i = 1; i <= sites.N(); ++i) {
+    ampo += tstep*0.5,"N(N-1)",i;
+  }
+  propDeriv = IQMPO(ampo);
 }
 
-void TimeStepperTEBDfast::initJGates(const double J){
+void BH_tDMRG::initJGates(const double J){
   using Gate = BondGate<IQTensor>;
 
   JGates_tforwards.clear();
@@ -38,16 +44,16 @@ void TimeStepperTEBDfast::initJGates(const double J){
 }
 
 
-void TimeStepperTEBDfast::setTstep(const double tstep_){
+void BH_tDMRG::setTstep(const double tstep_){
   tstep = tstep_;
   initJGates(J);
 }
 
-double TimeStepperTEBDfast::getTstep(){
+double BH_tDMRG::getTstep(){
   return tstep;
 }
 
-void TimeStepperTEBDfast::initUGates(const double Ufrom, const double Uto){
+void BH_tDMRG::initUGates(const double Ufrom, const double Uto){
   UGates1.clear();
   UGates2.clear();
 
@@ -70,7 +76,7 @@ void TimeStepperTEBDfast::initUGates(const double Ufrom, const double Uto){
 }
 
 
-void TimeStepperTEBDfast::step(IQMPS& psi, const double from, const double to, const bool propagateForward){
+void BH_tDMRG::step(IQMPS& psi, const double from, const double to, const bool propagateForward){
 
   if (propagateForward) {
     initUGates(from,to);
@@ -82,7 +88,7 @@ void TimeStepperTEBDfast::step(IQMPS& psi, const double from, const double to, c
   }
 }
 
-void TimeStepperTEBDfast::doStep(IQMPS& psi, const GateList& JGates){
+void BH_tDMRG::doStep(IQMPS& psi, const GateList& JGates){
   // if N odd: "lonely" UGate at end must be applied first
   if (sites.N() % 2 != 0) { // N is odd
     psi.Aref(sites.N()) *= UGates1.back();
@@ -164,4 +170,8 @@ void TimeStepperTEBDfast::doStep(IQMPS& psi, const GateList& JGates){
 
   psi.normalize();
 
+}
+
+IQMPO BH_tDMRG::propagatorDeriv(const double& control_n){
+  return propDeriv;
 }

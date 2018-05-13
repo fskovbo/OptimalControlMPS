@@ -1,8 +1,7 @@
-#ifndef INITIALIZESTATE_H
-#define INITIALIZESTATE_H
+#ifndef INITIALIZESTATE_HPP
+#define INITIALIZESTATE_HPP
 
 #include "itensor/all.h"
-#include "boson.h"
 
 namespace itensor{
 

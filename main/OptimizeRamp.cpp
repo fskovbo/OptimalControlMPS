@@ -1,13 +1,12 @@
-#include "OCBoseHubbard_nlp.hpp"
+#include "BH_nlp.hpp"
 #include "OptimalControl.hpp"
 #include "ControlBasisFactory.hpp"
 #include "SeedGenerator.hpp"
 #include "IpIpoptApplication.hpp"
 #include "itensor/all.h"
-#include "boson.h"
+#include "BH_sites.h"
 #include "correlations.hpp"
-#include "HamiltonianBH.hpp"
-#include "TimeStepperTEBDfast.hpp"
+#include "BH_tDMRG.hpp"
 #include "InitializeState.hpp"
 #include <stdlib.h>
 #include <time.h>
@@ -39,7 +38,6 @@ int main(int argc, char* argv[]){
 
   int M         = input.getInt("M");
   double gamma  = input.getReal("gamma",0);
-  int dHorder   = input.getInt("dHOrder",0);
   bool cache    = input.getYesNo("cacheProgress",false);
   int seed      = 1;
 
@@ -61,20 +59,19 @@ int main(int argc, char* argv[]){
   std::cout << "Seed  .......................... " << seed << "\n\n\n";
 
 
-  auto sites    = Boson(N,locDim);
+  auto sites    = BoseHubbard(N,locDim);
   auto u0       = SeedGenerator::linsigmoidSeed(U_i,U_f,T/tstep+1);
   auto bControl = ControlBasisFactory::buildCBsin(u0,tstep,T,M);
   auto psi_i    = InitializeState(sites,Npart,J,u0.front());
   auto psi_f    = InitializeState(sites,Npart,J,u0.back());
 
-  auto H_BH     = HamiltonianBH(sites,J,tstep,dHorder);
-  auto TEBD     = TimeStepperTEBDfast(sites,J,tstep,{"Cutoff=",1E-8});
+  auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8});
   auto times    = SeedGenerator::generateRange(0,tstep,T);
-  OptimalControl<TimeStepperTEBDfast,HamiltonianBH> OC(psi_f,psi_i,TEBD,H_BH,gamma);
+  OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,gamma);
 
   // Create a new instance of your nlp
   //  (use a SmartPtr, not raw)
-  SmartPtr<TNLP> mynlp = new OCBoseHubbard_nlp(OC,bControl,times,cache);
+  SmartPtr<TNLP> mynlp = new BH_nlp(OC,bControl,times,cache);
 
   // Create a new instance of IpoptApplication
   //  (use a SmartPtr, not raw)
@@ -136,14 +133,6 @@ int main(int argc, char* argv[]){
   }
   else std::cout << "Unable to open file\n";
 
-  // std::string filename2 = "Status.txt";
-  // std::ofstream myfile2 (filename2);
-  // if (myfile2.is_open())
-  // {
-  //   myfile2 << T << "\t" << returnstatus << "\n";
-  //   myfile2.close();
-  // }
-  // else std::cout << "Unable to open file\n";
 
 
 

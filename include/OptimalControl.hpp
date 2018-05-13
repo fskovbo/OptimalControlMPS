@@ -1,5 +1,5 @@
-#ifndef OPTIMALCONTROL_H
-#define OPTIMALCONTROL_H
+#ifndef OPTIMALCONTROL_HPP
+#define OPTIMALCONTROL_HPP
 
 #include "itensor/all.h"
 #include "ControlBasis.hpp"
@@ -14,11 +14,10 @@ using namespace itensor;
 using vec = std::vector<double>;
 using vecpair = std::pair<double, vec>;
 
-template<class TimeStepper, class Hamiltonian>
+template<class TimeStepper>
 class OptimalControl{
 private:
   TimeStepper& timeStepper;
-  Hamiltonian& hamil;
   double gamma, tstep;
   IQMPS psi_target, psi_init;
 
@@ -34,7 +33,7 @@ private:
   void calcChi(const vec& control);
 
 public:
-  OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, Hamiltonian& hamil, double gamma);
+  OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, double gamma);
 
   double getCost(const vec& control);
   vecpair getAnalyticGradient(const vec& control);

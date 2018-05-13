@@ -1,17 +1,16 @@
-#include "OCBoseHubbard_nlp.hpp"
+#include "BH_nlp.hpp"
 
 // constructor
-OCBoseHubbard_nlp::OCBoseHubbard_nlp(OC_BH& optControlProb, ControlBasis& bControl,
-                                    std::vector<double>& times, bool cacheProgress)
+BH_nlp::BH_nlp(OC_BH& optControlProb, ControlBasis& bControl, std::vector<double>& times, bool cacheProgress)
  : optControlProb(optControlProb), bControl(bControl), times(times), cacheProgress(cacheProgress) {
 
  }
 
 //destructor
-OCBoseHubbard_nlp::~OCBoseHubbard_nlp()
+BH_nlp::~BH_nlp()
 {}
 
-bool OCBoseHubbard_nlp::get_nlp_info(Ipopt::Index& n, Ipopt::Index& m, Ipopt::Index& nnz_jac_g,
+bool BH_nlp::get_nlp_info(Ipopt::Index& n, Ipopt::Index& m, Ipopt::Index& nnz_jac_g,
                              Ipopt::Index& nnz_h_lag, IndexStyleEnum& index_style)
 {
   // The problem described has M variables
@@ -33,7 +32,7 @@ bool OCBoseHubbard_nlp::get_nlp_info(Ipopt::Index& n, Ipopt::Index& m, Ipopt::In
   return true;
 }
 
-bool OCBoseHubbard_nlp::get_bounds_info(Ipopt::Index n, Number* x_l, Number* x_u,
+bool BH_nlp::get_bounds_info(Ipopt::Index n, Number* x_l, Number* x_u,
                                 Ipopt::Index m, Number* g_l, Number* g_u)
 {
   // here, the n and m we gave IPOPT in get_nlp_info are passed back to us.
@@ -58,7 +57,7 @@ bool OCBoseHubbard_nlp::get_bounds_info(Ipopt::Index n, Number* x_l, Number* x_u
   return true;
 }
 
-bool OCBoseHubbard_nlp::get_starting_point(Ipopt::Index n, bool init_x, Number* x,
+bool BH_nlp::get_starting_point(Ipopt::Index n, bool init_x, Number* x,
                                    bool init_z, Number* z_L, Number* z_U,
                                    Ipopt::Index m, bool init_lambda,
                                    Number* lambda)
@@ -77,7 +76,7 @@ bool OCBoseHubbard_nlp::get_starting_point(Ipopt::Index n, bool init_x, Number* 
   return true;
 }
 
-bool OCBoseHubbard_nlp::eval_f(Ipopt::Index n, const Number* x, bool new_x, Number& obj_value)
+bool BH_nlp::eval_f(Ipopt::Index n, const Number* x, bool new_x, Number& obj_value)
 {
   if (new_x){
     bControl.setCArray(x,n);
@@ -88,7 +87,7 @@ bool OCBoseHubbard_nlp::eval_f(Ipopt::Index n, const Number* x, bool new_x, Numb
   return true;
 }
 
-bool OCBoseHubbard_nlp::eval_grad_f(Ipopt::Index n, const Number* x, bool new_x, Number* grad_f)
+bool BH_nlp::eval_grad_f(Ipopt::Index n, const Number* x, bool new_x, Number* grad_f)
 {
   if (new_x){
     bControl.setCArray(x,n);
@@ -100,7 +99,7 @@ bool OCBoseHubbard_nlp::eval_grad_f(Ipopt::Index n, const Number* x, bool new_x,
   return true;
 }
 
-bool OCBoseHubbard_nlp::eval_g(Ipopt::Index n, const Number* x, bool new_x, Ipopt::Index m, Number* g)
+bool BH_nlp::eval_g(Ipopt::Index n, const Number* x, bool new_x, Ipopt::Index m, Number* g)
 {
   if (new_x){
     bControl.setCArray(x,n);
@@ -113,7 +112,7 @@ bool OCBoseHubbard_nlp::eval_g(Ipopt::Index n, const Number* x, bool new_x, Ipop
   return true;
 }
 
-bool OCBoseHubbard_nlp::eval_jac_g(Ipopt::Index n, const Number* x, bool new_x,
+bool BH_nlp_nlp::eval_jac_g(Ipopt::Index n, const Number* x, bool new_x,
                            Ipopt::Index m, Ipopt::Index nele_jac, Ipopt::Index* iRow, Ipopt::Index *jCol,
                            Number* values)
 {
@@ -141,7 +140,7 @@ bool OCBoseHubbard_nlp::eval_jac_g(Ipopt::Index n, const Number* x, bool new_x,
   return true;
 }
 
-void OCBoseHubbard_nlp::finalize_solution(SolverReturn status,
+void BH_nlp_nlp::finalize_solution(SolverReturn status,
                                   Ipopt::Index n, const Number* x, const Number* z_L,
                                   const Number* z_U, Ipopt::Index m, const Number* g,
                                   const Number* lambda, Number obj_value,
@@ -191,7 +190,7 @@ void OCBoseHubbard_nlp::finalize_solution(SolverReturn status,
   else std::cout << "Unable to open file\n";
 }
 
-bool OCBoseHubbard_nlp::intermediate_callback(AlgorithmMode mode,
+bool BH_nlp::intermediate_callback(AlgorithmMode mode,
                                               Ipopt::Index iter, Number obj_value,
                                               Number inf_pr, Number inf_du,
                                               Number mu, Number d_norm,
@@ -221,17 +220,3 @@ bool OCBoseHubbard_nlp::intermediate_callback(AlgorithmMode mode,
 
   return true;
 }
-
-
-// Ipopt::Index OCBoseHubbard_nlp::get_number_of_nonlinear_variables(){
-//   return bControl.getM();
-// }
-//
-// bool OCBoseHubbard_nlp::get_list_of_nonlinear_variables(Ipopt::Index num_nonlin_vars,
-//                                                       Ipopt::Index* pos_nonlin_vars)
-// {
-//   for (int i = 0; i < num_nonlin_vars; i++) {
-//     pos_nonlin_vars[i] = i;
-//   }
-//   return true;
-// }
