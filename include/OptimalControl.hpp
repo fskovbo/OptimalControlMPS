@@ -23,13 +23,13 @@ private:
 
   std::vector<IQMPS> psi_t;
 
-  double getRegularization(const stdvec& control);
-  stdvec getRegularizationGrad(const stdvec& control);
-  stdvec getFidelityGrad(const stdvec& control, const bool new_control);
 
 public:
   OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, double gamma);
 
+  double getRegularization(const stdvec& control);
+  stdvec getRegularizationGrad(const stdvec& control);
+  stdvec getFidelityGrad(const stdvec& control, const bool new_control);
   std::vector<IQMPS> getPsit() const;
 
   // Optimal control using time-descretized control 
