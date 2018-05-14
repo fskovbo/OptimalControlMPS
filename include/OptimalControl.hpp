@@ -29,14 +29,13 @@ public:
 
   double getRegularization(const stdvec& control);
   stdvec getRegularizationGrad(const stdvec& control);
-  stdvec getFidelityGrad(const stdvec& control, const bool new_control);
+  stdvec getFidelityGrad(const stdvec& control, const bool new_control = true);
   std::vector<IQMPS> getPsit() const;
 
   // Optimal control using time-descretized control 
   void calcPsi(const stdvec& control);
   double getCost(const stdvec& control, const bool new_control = true);
   stdvec getAnalyticGradient(const stdvec& control, const bool new_control = true);
-  stdvec getNumericGradient(const stdvec& control);
   stdvec getFidelityForAllT(const stdvec& control, const bool new_control = true);
 
   // Optimal control using user-defined control parameterization

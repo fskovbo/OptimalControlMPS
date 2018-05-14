@@ -118,34 +118,6 @@ stdvec OptimalControl<TimeStepper>::getAnalyticGradient(const stdvec& control, c
 
 
 template<class TimeStepper>
-stdvec OptimalControl<TimeStepper>::getNumericGradient(const stdvec& control)
-{
-  auto ccopy = control;
-  double Jp, Jm, epsilon = 1e-5;
-  std::vector<double> g;
-  g.reserve(control.size());
-
-  size_t count = 0;
-
-  for (auto& ui : ccopy){
-    ui        += epsilon;
-    Jp         = getCost(ccopy);
-
-    ui        -= 2.0*epsilon;
-    Jm         = getCost(ccopy);
-
-    ui        += epsilon;
-
-    std::cout << "Calculated derivative nr. " << count++ << '\n';
-
-    g.push_back((Jp-Jm)/(2.0*epsilon));
-  }
-  
-  return g;
-}
-
-
-template<class TimeStepper>
 stdvec OptimalControl<TimeStepper>::getFidelityForAllT(const stdvec& control, const bool new_control)
 {
   if (new_control) {
