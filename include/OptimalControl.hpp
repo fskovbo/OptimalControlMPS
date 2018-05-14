@@ -11,49 +11,42 @@
 
 
 using namespace itensor;
-using vec = std::vector<double>;
-using vecpair = std::pair<double, vec>;
+using stdvec = std::vector<double>;
 
 template<class TimeStepper>
 class OptimalControl{
 private:
+
   TimeStepper& timeStepper;
   double gamma, tstep;
   IQMPS psi_target, psi_init;
 
   std::vector<IQMPS> psi_t;
-  std::vector<IQMPS> chi_t;
 
-  double getFidelity(const vec& control);
-  double getRegularisation(const vec& control);
-  vec getRegGrad(const vec& control);
-  vecpair getRegPlusRegGrad(const vec& control);
-  vecpair getFidelityPlusFidelityGrad(const vec& control);
-  void calcPsi(const vec& control);
-  void calcChi(const vec& control);
+  double getRegularization(const stdvec& control);
+  stdvec getRegularizationGrad(const stdvec& control);
+  stdvec getFidelityGrad(const stdvec& control, const bool new_control);
 
 public:
   OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, double gamma);
 
-  double getCost(const vec& control);
-  vecpair getAnalyticGradient(const vec& control);
-  vecpair getNumericGradient(const vec& control);
-  vec getFidelityForAllT(const vec& control);
-
-  double getCost(const ControlBasis& bControl);
-  vecpair getAnalyticGradient(const ControlBasis& bControl);
-  vecpair getNumericGradient(const ControlBasis& bControl);
-  vec getFidelityForAllT(const ControlBasis& bControl);
-
-  double getCost(const vec& control, const bool new_control);
-  vec getAnalyticGradient(const vec& control, const bool new_control);
-
-  double getCost(const ControlBasis& bControl, const bool new_control);
-  vec getAnalyticGradient(const ControlBasis& bControl, const bool new_control);
-  void calcPsi(const ControlBasis& bControl);
-
   std::vector<IQMPS> getPsit() const;
-  vecpair checkCostPlusFidelity(const vec& control);
+
+  // Optimal control using time-descretized control 
+  void calcPsi(const stdvec& control);
+  double getCost(const stdvec& control, const bool new_control = true);
+  stdvec getAnalyticGradient(const stdvec& control, const bool new_control = true);
+  stdvec getNumericGradient(const stdvec& control);
+  stdvec getFidelityForAllT(const stdvec& control, const bool new_control = true);
+
+  // Optimal control using user-defined control parameterization
+  void calcPsi(const ControlBasis& basis);
+  double getCost(const ControlBasis& basis, const bool new_control = true);
+  stdvec getAnalyticGradient(const ControlBasis& basis, const bool new_control = true);
+  stdvec getNumericGradient(const ControlBasis& BasicSiteSet);
+  stdvec getFidelityForAllT(const ControlBasis& basis, const bool new_control = true);
+
+  
 };
 
 #endif

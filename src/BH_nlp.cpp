@@ -107,7 +107,7 @@ bool BH_nlp::eval_g(Ipopt::Index n, const Number* x, bool new_x, Ipopt::Index m,
     optControlProb.calcPsi(bControl);
   }
 
-  bControl.convControl(g);
+  bControl.convertControl(g);
 
   return true;
 }
@@ -171,7 +171,7 @@ void BH_nlp::finalize_solution(SolverReturn status,
   bControl.setCArray(x,n); // set control to solution
   auto u_i  = bControl.getU0();
   auto f_i  = optControlProb.getFidelityForAllT(u_i);
-  auto u    = bControl.convControl();
+  auto u    = bControl.convertControl();
   auto f    = optControlProb.getFidelityForAllT(bControl);
 
   std::string filename = "BHrampInitialFinal.txt";

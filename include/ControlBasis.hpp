@@ -35,9 +35,9 @@ public:
   stdvec getCArray() const;
   void setCArray(const stdvec& cVec);
   void setCArray(const double* cArray, size_t size);
-  stdvec convControl() const;
-  void convControl(double* u);
-  stdvec convGrad(const stdvec& gradu) const;
+  stdvec convertControl() const;
+  void convertControl(double* u);
+  stdvec convertBackGradient(const stdvec& gradu) const;
 
   void exportParameters();
 

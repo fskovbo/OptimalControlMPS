@@ -50,20 +50,20 @@ void ControlBasis::setCArray(const double* cArray, size_t size) {
   ucurrent  = u0+S%(f*c);
 }
 
-stdvec ControlBasis::convControl() const{
+stdvec ControlBasis::convertControl() const{
   // u = u0 + S*sum(fn*cn)
   // convert output to std::vec
   return arma::conv_to< stdvec >::from( ucurrent );
 }
 
-void ControlBasis::convControl(double* u) {
+void ControlBasis::convertControl(double* u) {
   // calculate  arma::vec u and return as double*
   double* up = ucurrent.memptr();
   std::copy(up, up+N, u);
 }
 
 
-stdvec ControlBasis::convGrad(const stdvec& gradu) const{
+stdvec ControlBasis::convertBackGradient(const stdvec& gradu) const{
   // convert std::vec input to arma::vec for faster calculations
   // convert back to std::vec and return
   arma::vec G = arma::conv_to< arma::vec >::from(gradu);
