@@ -117,11 +117,34 @@ struct gradientTest : testing::Test
         return g;
     }
 
-    
+    std::vector<double> getNumericGrad(const ControlBasis& basis, OptimalControl<BH_tDMRG>& OCBH)
+    {
+        auto basiscopy  = basis;
+        auto cArray     = basiscopy.getCArray();
+        double Jp, Jm, epsilon = 1e-5;
+        std::vector<double> g;
+
+        for (auto& ci : cArray){
+            ci        += epsilon;
+            basiscopy.setCArray(cArray);
+            Jp         = OCBH.getCost(basiscopy);
+
+            ci        -= 2.0*epsilon;
+            basiscopy.setCArray(cArray);
+            Jm         = OCBH.getCost(basiscopy);
+
+            ci        += epsilon;
+            basiscopy.setCArray(cArray);
+            g.push_back((Jp-Jm)/(2.0*epsilon));
+        }
+        
+        return g;
+    }
 
 
 
 };
+
 
 TEST_F(gradientTest, testRegularizationGRAPE)
 {
@@ -166,10 +189,38 @@ TEST_F(gradientTest, testRegularizationGRAPE)
     {
         EXPECT_NEAR(analytic.at(i) , numeric.at(i), 1e-5);
     }
-    
 }
 
-TEST_F(gradientTest, testFidelity)
+
+TEST_F(gradientTest, testFidelityGROUP)
+{
+    auto sites      = BoseHubbard(N,locDim);
+    auto psi_i      = InitializeState(sites,Npart,J,cstart);
+    auto psi_f      = InitializeState(sites,Npart,J,cend);
+    auto tDMRG      = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8});
+    OptimalControl<BH_tDMRG> OC(psi_f,psi_i,tDMRG,1e-6);
+
+    // Build parameterization
+    int M           = 20;
+    auto u0         = linseed(cstart,cend,T/tstep);
+    auto basis      = ControlBasisFactory::buildCBsin(u0,tstep,T,M);
+    auto cArray     = sinseed(0,7,M);
+    basis.setCArray(cArray);
+
+    // Test GROUP gradient
+    auto analytic   = OC.getAnalyticGradient(basis);
+    auto numeric    = getNumericGrad(basis,OC);
+
+    ASSERT_EQ( analytic.size() , numeric.size() ); 
+    
+    for(size_t i = 0; i < analytic.size(); i++)
+    {
+        EXPECT_NEAR(analytic.at(i) , numeric.at(i), 5e-6);
+    }
+}
+
+
+TEST_F(gradientTest, testGradientGRAPE)
 {
     auto sites      = BoseHubbard(N,locDim);
     auto psi_i      = InitializeState(sites,Npart,J,cstart);
@@ -186,7 +237,7 @@ TEST_F(gradientTest, testFidelity)
     
     for(size_t i = 1; i < analytic.size()-1; i++)
     {
-        EXPECT_NEAR(analytic.at(i) , numeric.at(i), 1e-5);
+        EXPECT_NEAR(analytic.at(i) , numeric.at(i), 5e-6);
     }
 
     // Test GRAPE fidelity gradient for sinus gradient
@@ -198,7 +249,7 @@ TEST_F(gradientTest, testFidelity)
     
     for(size_t i = 1; i < analytic.size()-1; i++)
     {
-        EXPECT_NEAR(analytic.at(i) , numeric.at(i), 1e-5);
+        EXPECT_NEAR(analytic.at(i) , numeric.at(i), 5e-6);
     }
 
     // Test GRAPE fidelity gradient for exponential gradient
@@ -210,9 +261,10 @@ TEST_F(gradientTest, testFidelity)
     
     for(size_t i = 1; i < analytic.size()-1; i++)
     {
-        EXPECT_NEAR(analytic.at(i) , numeric.at(i), 1e-5);
+        EXPECT_NEAR(analytic.at(i) , numeric.at(i), 5e-6);
     }
 }
+
 
 int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);

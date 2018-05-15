@@ -42,7 +42,6 @@ public:
   void calcPsi(const ControlBasis& basis);
   double getCost(const ControlBasis& basis, const bool new_control = true);
   stdvec getAnalyticGradient(const ControlBasis& basis, const bool new_control = true);
-  stdvec getNumericGradient(const ControlBasis& BasicSiteSet);
   stdvec getFidelityForAllT(const ControlBasis& basis, const bool new_control = true);
 
   

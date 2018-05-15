@@ -159,32 +159,6 @@ stdvec OptimalControl<TimeStepper>::getAnalyticGradient(const ControlBasis& basi
 
 
 template<class TimeStepper>
-stdvec OptimalControl<TimeStepper>::getNumericGradient(const ControlBasis& basis)
-{
-  auto basiscopy  = basis;
-  auto cArray     = basiscopy.getCArray();
-  double Jp, Jm, epsilon = 1e-5;
-  std::vector<double> g;
-
-  for (auto& ci : cArray){
-    ci        += epsilon;
-    basiscopy.setCArray(cArray);
-    Jp         = getCost(basiscopy);
-
-    ci        -= 2.0*epsilon;
-    basiscopy.setCArray(cArray);
-    Jm         = getCost(basiscopy);
-
-    ci        += epsilon;
-    basiscopy.setCArray(cArray);
-    g.push_back((Jp-Jm)/(2.0*epsilon));
-  }
-  
-  return g;
-}
-
-
-template<class TimeStepper>
 stdvec OptimalControl<TimeStepper>::getFidelityForAllT(const ControlBasis& basis, const bool new_control)
 {
   return getFidelityForAllT(basis.convertControl(),new_control);
