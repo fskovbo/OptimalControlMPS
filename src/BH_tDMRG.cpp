@@ -1,9 +1,12 @@
 #include "BH_tDMRG.hpp"
 
 BH_tDMRG::BH_tDMRG(const SiteSet& sites, const double J, const double tstep, const Args& args)
-  : J(J), sites(sites), args(args) {
+  : J(J), sites(sites), args(args)
+{
+  // builds J-Gates as well, which remain constant
   setTstep(tstep);
 
+  // derivative of propagator is constant
   auto ampo = AutoMPO(sites);
   for(int i = 1; i <= sites.N(); ++i) {
     ampo += tstep*0.5,"N(N-1)",i;
@@ -11,12 +14,16 @@ BH_tDMRG::BH_tDMRG(const SiteSet& sites, const double J, const double tstep, con
   propDeriv = IQMPO(ampo);
 }
 
-void BH_tDMRG::initJGates(const double J){
+
+void BH_tDMRG::initJGates(const double J)
+{
   using Gate = BondGate<IQTensor>;
 
   JGates_tforwards.clear();
   JGates_tbackwards.clear();
 
+  // build J-Gates for even bonds
+  // builds gates for both forwards and backwards propagation
   for(int i = 1; i < sites.N(); i += 2)
       {
       auto hterm = -J*sites.op("A",i)*sites.op("Adag",i+1);
@@ -31,6 +38,8 @@ void BH_tDMRG::initJGates(const double J){
   int offset = 1;
   if (sites.N() % 2 == 0) { offset = 2; }
 
+  // build J-Gates for odd bonds
+  // builds gates for both forwards and backwards propagation  
   for(int i = sites.N()-offset; i >= 1; i -= 2)
       {
       auto hterm = -J*sites.op("A",i)*sites.op("Adag",i+1);
@@ -44,19 +53,25 @@ void BH_tDMRG::initJGates(const double J){
 }
 
 
-void BH_tDMRG::setTstep(const double tstep_){
+void BH_tDMRG::setTstep(const double tstep_)
+{
   tstep = tstep_;
   initJGates(J);
 }
 
-double BH_tDMRG::getTstep(){
+
+double BH_tDMRG::getTstep()
+{
   return tstep;
 }
 
-void BH_tDMRG::initUGates(const double Ufrom, const double Uto){
+
+void BH_tDMRG::initUGates(const double Ufrom, const double Uto)
+{
   UGates1.clear();
   UGates2.clear();
 
+  // U-Gates are diagonal, whereby H_U can be exponentiated directly
   for (int k = 1; k <= sites.N(); ++k) {
     auto s    = sites.si(k);
     auto sP   = prime(s);
@@ -76,8 +91,8 @@ void BH_tDMRG::initUGates(const double Ufrom, const double Uto){
 }
 
 
-void BH_tDMRG::step(IQMPS& psi, const double from, const double to, const bool propagateForward){
-
+void BH_tDMRG::step(IQMPS& psi, const double from, const double to, const bool propagateForward)
+{
   if (propagateForward) {
     initUGates(from,to);
     doStep(psi, JGates_tforwards);
@@ -88,7 +103,8 @@ void BH_tDMRG::step(IQMPS& psi, const double from, const double to, const bool p
   }
 }
 
-void BH_tDMRG::doStep(IQMPS& psi, const GateList& JGates){
+void BH_tDMRG::doStep(IQMPS& psi, const GateList& JGates)
+{
   // if N odd: "lonely" UGate at end must be applied first
   if (sites.N() % 2 != 0) { // N is odd
     psi.Aref(sites.N()) *= UGates1.back();
@@ -172,6 +188,8 @@ void BH_tDMRG::doStep(IQMPS& psi, const GateList& JGates){
 
 }
 
-IQMPO BH_tDMRG::propagatorDeriv(const double& control_n){
+
+IQMPO BH_tDMRG::propagatorDeriv(const double& control_n)
+{
   return propDeriv;
 }

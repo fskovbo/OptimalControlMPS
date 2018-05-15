@@ -9,9 +9,10 @@
 #include <algorithm>
 
 
-
 using namespace itensor;
 using stdvec = std::vector<double>;
+
+
 
 template<class TimeStepper>
 class OptimalControl{

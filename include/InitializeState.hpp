@@ -3,8 +3,17 @@
 
 #include "itensor/all.h"
 
+// Methods for setting up ground states through the ITensor DMRG,
+//  allowing cleaner code in mainfiles.
+// The methods distribute the particles initially, sets up the Hamiltonian
+//  of the desired state, then executes the DMRG algorithm and return the result.
+//
+// NOTE: for large/complex systems the parameters of the DMRG algorithm may need adjustment 
+
+
 namespace itensor{
 
+// Sets up a state in superfluid phase (U = 0, J = 1)
 inline IQMPS SetupSuperfluid(SiteSet const& sites, int Npart){
   int N = sites.N();
 
@@ -46,6 +55,9 @@ inline IQMPS SetupSuperfluid(SiteSet const& sites, int Npart){
   return psi;
 }
 
+
+// Sets up a state in Mot-Insulator phase (U = 1, J = 1e-3)
+// Note: the ITensor DMRG algorithm struggles converging for J << U 
 inline IQMPS SetupMottInsulator(SiteSet const& sites, int Npart){
   int N = sites.N();
 
@@ -89,6 +101,8 @@ inline IQMPS SetupMottInsulator(SiteSet const& sites, int Npart){
   return psi;
 }
 
+
+// Sets up custom state
 inline IQMPS InitializeState(const SiteSet& sites, const int Npart, const double J, const double U){
   int N = sites.N();
   auto state = InitState(sites);

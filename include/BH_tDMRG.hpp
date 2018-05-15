@@ -6,6 +6,12 @@
 using namespace itensor;
 using GateList = std::vector< BondGate<IQTensor> >;
 
+// tDMRG propagator for Bose-Hubbard model
+// Utilizes a Suzuki-Trotter expansion of propagator:
+//    prop = exp(-i H_U(to) dt/2) exp(-i H_J dt) exp(-i H_U(from) dt/2)
+// where the interaction U is the control parameter, which is evaluated
+// through a split-step: U(t_i) -> U(t_i+1)  
+
 class BH_tDMRG {
 private:
   double tstep, J;
