@@ -1,4 +1,4 @@
 build
 CMakeLists.txt
-unit-tests/build
+tests/CMakeLists.txt
 .vscode
