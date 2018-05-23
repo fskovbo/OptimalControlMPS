@@ -7,6 +7,7 @@
 #include "correlations.hpp"
 #include <string>
 #include <iomanip>
+#include <time.h>
 
 
 using namespace itensor;
@@ -14,7 +15,7 @@ using namespace itensor;
 
 int main(int argc, char* argv[])
 {
-    std::vector<double> maxBondDim = {10 , 20 , 25 , 30 , 35 , 40 , 100 };
+    std::vector<int> maxBondDim = {10 , 20, 30, 40 , 50 , 500 };
 
     if (argc < 3)
     {
@@ -25,9 +26,9 @@ int main(int argc, char* argv[])
     double tstep  = 1e-2;
     double T      = 6;
 
-    int N         = 8;
-    int Npart     = 8;
-    int locDim    = 8;
+    int N         = 15;
+    int Npart     = 15;
+    int locDim    = 10;
 
     // load InputFile_BHcontrol.txt
     if (argc >= 2)
@@ -72,10 +73,22 @@ int main(int argc, char* argv[])
     auto psi_f      = InitializeState(sites,Npart,J,control.back());
 
     // extend duration and controls
-    for (size_t i = 1; i <= 50; i++) {
-    times.push_back(T + i*tstep);
-    control.push_back( control.back() );
+    for (size_t i = 1; i <= 50; i++)
+    {
+        times.push_back(T + i*tstep);
+        control.push_back( control.back() );
     }
+
+    // Create an output string stream
+    std::ostringstream streamObj1;
+    // Set Fixed -Point Notation
+    streamObj1 << std::fixed;
+    // Set precision to 1 digits
+    streamObj1 << std::setprecision(1);
+    //Add double to stream
+    streamObj1 << T;
+
+    std::vector<double> runtimes;
 
     for (double maxM : maxBondDim)
     {
@@ -85,26 +98,21 @@ int main(int argc, char* argv[])
         OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,0);
         
         // run time evolution and get fidelity
+        clock_t begin   = clock();
         auto fid        = OC.getFidelityForAllT(control);
         auto psi        = OC.getPsit();
-        
+        clock_t end     = clock();
+        auto grad       = OC.getAnalyticGradient(control,false);
+
 
         // Save extended Data
 
-        // Create an output string stream
-        std::ostringstream streamObj1;
-        // Set Fixed -Point Notation
-        streamObj1 << std::fixed;
-        // Set precision to 1 digits
-        streamObj1 << std::setprecision(1);
-        //Add double to stream
-        streamObj1 << T;
         // Create an output string stream
         std::ostringstream streamObj2;
         // Set Fixed -Point Notation
         streamObj2 << std::fixed;
         // Set precision to 1 digits
-        streamObj2 << std::setprecision(1);
+        streamObj2 << std::setprecision(0);
         //Add double to stream
         streamObj2 << maxM;
 
@@ -116,12 +124,10 @@ int main(int argc, char* argv[])
         {
             for (auto& pt : psi)
             {
-                double cfrac = correlationTerm(sites,pt,"Adag","A")/Npart;
-
                 myfile << times.at(ind)     << "\t";
                 myfile << control.at(ind)   << "\t";
                 myfile << fid.at(ind)       << "\t";
-                myfile << cfrac             << "\t";
+                myfile << grad.at(ind)      << "\t";
                 
                 for(int b = 1; b < pt.N(); ++b) 
                 {
@@ -134,7 +140,41 @@ int main(int argc, char* argv[])
             myfile.close();
         }
         else std::cout << "Unable to open file\n";
+
+        double rt = double(end - begin) / CLOCKS_PER_SEC;
+        std::cout << "Runtime = " << rt << "\n";
+        runtimes.push_back(rt);        
     } // foreach maxBondDim
+
+
+    // save runtimes
+    std::string filename = "TimeEvolBondDimT" + streamObj1.str() + "runtimes.txt";
+    std::ofstream myfile (filename);
+
+    if (myfile.is_open())
+    {
+        for(size_t i = 0; i < runtimes.size(); i++)
+        {
+            myfile << maxBondDim.at(i)  << "\t";
+            myfile << runtimes.at(i)    << "\n";
+        }
+        myfile.close();
+    }
+    else std::cout << "Unable to open file\n";
+
+
+    // bond dims of initial and target state
+    std::ofstream myfile2 ("DMRGstateBondDim.txt");
+    if (myfile2.is_open())
+    { 
+        for(int b = 1; b < psi_i.N(); ++b) 
+        {
+            myfile2 << linkInd(psi_i,b).m() << "\t";
+            myfile2 << linkInd(psi_f,b).m() << "\n"; 
+        }
+        myfile2.close();
+    }
+    else std::cout << "Unable to open file\n";
 
     
     return 0;
