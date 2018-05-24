@@ -65,7 +65,7 @@ int main(int argc, char* argv[]){
   auto psi_i    = InitializeState(sites,Npart,J,u0.front());
   auto psi_f    = InitializeState(sites,Npart,J,u0.back());
 
-  auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8});
+  auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8,"Maxm=",100});
   auto times    = SeedGenerator::generateRange(0,tstep,T);
   OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,gamma);
 
