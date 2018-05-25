@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
 
     int N         = 15;
     int Npart     = 15;
-    int locDim    = 10;
+    int locDim    = 7;
 
     // load InputFile_BHcontrol.txt
     if (argc >= 2)
@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
     {
         std::cout << "Calculating time-evolution for maxM = " << maxM << "\n";
 
-        auto stepper    = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8,"Maxm=",maxM});
+        auto stepper    = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-6,"Maxm=",maxM});
         OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,0);
         
         // run time evolution and get fidelity
