@@ -1,85 +1,78 @@
 #include "ControlBasis.hpp"
 
-ControlBasis::ControlBasis(arma::vec& u0, arma::vec& S, arma::mat& f, double dt)
-  : u0(u0), S(S), f(f), ft(f.t()), dt(dt), M(f.n_cols), N(u0.size()) {
+ControlBasis::ControlBasis(stdvec& u0, stdvec& S, rowmat& f)
+    : u0(u0), S(S), f(f), N(u0.size()), M(f.front().size())
+{
+    // build control Jacobian du_i/dc_n
+    controlJacobian = f;
+    size_t i = 0;
+    for (auto& row : controlJacobian)
+    {
+        for (auto& val : row)
+        {
+            val *= S[i];
+        }
+        i++;    
+    }
 
-  constraints = (arma::diagmat(S)*f).t();
-  c           = arma::zeros<arma::vec>(M);
-  ucurrent    = u0;
+    // set current control to u0 as no c vector specified
+    ucurrent = u0;
 }
 
-stdvec ControlBasis::getCArray() const{
-  // return as std::vec
-  return arma::conv_to< stdvec >::from(c);
+size_t ControlBasis::getM() const
+{
+    return M;
 }
 
-size_t ControlBasis::getM() const{
-  return M;
+size_t ControlBasis::getN() const
+{   
+    return N;
 }
 
-size_t ControlBasis::getN() const{
-  return N;
-}
+stdvec ControlBasis::convertControl( const stdvec& control, const bool new_control)
+{
+    // u = u0 + S*sum_n (f_n * c_n)
+    // control = (c_1 , ... , c_M)
+    if (new_control) 
+    {
+        assert(control.size() == M);
 
-stdvec ControlBasis::getU0() const{
-  // return as std::vec
-  return arma::conv_to< stdvec >::from(u0);
-}
+        stdvec u = u0;
+        for (size_t i = 0; i < N; i++)
+        {
+            u[i] += S[i]*std::inner_product(f[i].begin(), f[i].end(), control.begin(), 0);
+        }
 
-double ControlBasis::getFij(size_t i, size_t j) const{
-  return f(i,j);
-}
+        ucurrent = u;
+    }
 
-void ControlBasis::getConstraintJacobian(double* array) {
-  // return f as a single, long array double*
-  // uses transpose as arma::mat stored as columns, but Ipopt takes rows
-  double* farray = constraints.memptr();
-  std::copy(farray, farray+N*M, array);
-}
-
-
-void ControlBasis::setCArray(const stdvec& cVec){
-  // convert std::vec input to arma::vec member
-  c         = arma::conv_to< arma::vec >::from(cVec);
-  ucurrent  = u0+S%(f*c);
-}
-
-void ControlBasis::setCArray(const double* cArray, size_t size) {
-  // convert double* input to arma::vec member
-  c         = arma::vec(cArray, size);
-  ucurrent  = u0+S%(f*c);
-}
-
-stdvec ControlBasis::convertControl() const{
-  // u = u0 + S*sum(fn*cn)
-  // convert output to std::vec
-  return arma::conv_to< stdvec >::from( ucurrent );
-}
-
-void ControlBasis::convertControl(double* u) {
-  // calculate  arma::vec u and return as double*
-  double* up = ucurrent.memptr();
-  std::copy(up, up+N, u);
+    return ucurrent;
 }
 
 
-stdvec ControlBasis::convertBackGradient(const stdvec& gradu) const{
-  // convert std::vec input to arma::vec for faster calculations
-  // convert back to std::vec and return
-  arma::vec G = arma::conv_to< arma::vec >::from(gradu);
-  return arma::conv_to< stdvec >::from( ft*(G%S) );
+stdvec ControlBasis::convertGradient( const stdvec& gradu ) const
+{
+    // dJ/dc_n = sum_i (dJ/du_i S_i f_{i,n} ) 
+    assert( gradu.size() == N );
+
+    stdvec gradc(M);
+    
+    for(size_t n = 0; n < M; n++)
+    {
+        double gn = 0;
+        for(size_t i = 0; i < N; i++)
+        {
+            gn += S[i]*gradu[i]*f[i][n];
+        }
+
+        gradc[n] = gn;       
+    }
+    
+    return gradc;
 }
 
 
-void ControlBasis::exportParameters(){
-  arma::mat vecdata = arma::join_horiz( ucurrent , u0);
-  vecdata = arma::join_horiz(vecdata , S);
-
-  arma::mat matdata = arma::join_vert(f, c.t());
-
-  std::string filename1 = "CBsinVecdata_M" + std::to_string(M) + ".txt";
-  std::string filename2 = "CBsinMatdata_M" + std::to_string(M) + ".txt";
-
-  vecdata.save(filename1,arma::raw_ascii);
-  matdata.save(filename2,arma::raw_ascii);
+rowmat ControlBasis::getControlJacobian() const
+{
+    return controlJacobian;
 }
