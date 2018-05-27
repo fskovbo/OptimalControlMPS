@@ -14,7 +14,8 @@
 namespace itensor{
 
 // Sets up a state in superfluid phase (U = 0, J = 1)
-inline IQMPS SetupSuperfluid(SiteSet const& sites, int Npart){
+inline IQMPS SetupSuperfluid(SiteSet const& sites, int Npart, bool silent = true){        
+  if (silent) std::cout.setstate(std::ios_base::failbit); // silences the DMRG info
   int N = sites.N();
 
   if (Npart > N) { printf("Npart > N not supported\n"); }
@@ -52,13 +53,18 @@ inline IQMPS SetupSuperfluid(SiteSet const& sites, int Npart){
   auto energy = dmrg(psi,H,sweeps,{"Quiet",true});
   printf("Energy w.r.t. superfluid Hamiltonian: %f\n",energy);
 
+  std::cout.clear(); // clears silence        
+  
+
   return psi;
 }
 
 
 // Sets up a state in Mot-Insulator phase (U = 1, J = 1e-3)
 // Note: the ITensor DMRG algorithm struggles converging for J << U 
-inline IQMPS SetupMottInsulator(SiteSet const& sites, int Npart){
+inline IQMPS SetupMottInsulator(SiteSet const& sites, int Npart, bool silent = true){
+  if (silent) std::cout.setstate(std::ios_base::failbit); // silences the DMRG info
+  
   int N = sites.N();
 
   if (Npart > N) { printf("Npart > N not supported\n"); }
@@ -97,13 +103,16 @@ inline IQMPS SetupMottInsulator(SiteSet const& sites, int Npart){
 
   auto energy = dmrg(psi,H,sweeps,{"Quiet",true});
   printf("Energy w.r.t. Mott-Insulator Hamiltonian: %f\n",energy);
+  std::cout.clear(); // clears silence        
 
   return psi;
 }
 
 
 // Sets up custom state
-inline IQMPS InitializeState(const SiteSet& sites, const int Npart, const double J, const double U){
+inline IQMPS InitializeState(const SiteSet& sites, const int Npart, const double J, const double U, bool silent = true){
+  if (silent) std::cout.setstate(std::ios_base::failbit); // silences the DMRG info
+  
   int N = sites.N();
   auto state = InitState(sites);
   int p = Npart;
@@ -139,6 +148,9 @@ inline IQMPS InitializeState(const SiteSet& sites, const int Npart, const double
   sweeps.noise() = 1E-7,1E-8,0.0;
 
   auto energy = dmrg(psi,H,sweeps,{"Quiet",true});
+
+  std::cout.clear(); // clears silence        
+  
   return psi;
 }
 

@@ -24,22 +24,26 @@ int main(int argc, char* argv[]){
     return 0;
   }
 
-  auto input    = InputGroup(argv[1],"input");
+  auto input      = InputGroup(argv[1],"input");
 
-  double tstep  = input.getReal("tstep",1e-2);
-  double T      = input.getReal("T");
+  double tstep    = input.getReal("tstep",1e-2);
+  double T        = input.getReal("T");
 
-  int N         = input.getInt("N");
-  int Npart     = input.getInt("Npart");
-  int locDim    = input.getInt("d");
+  int N           = input.getInt("N");
+  int Npart       = input.getInt("Npart");
+  int locDim      = input.getInt("d");
 
-  double J      = 1.0;
-  double U_i    = 2.0;
-  double U_f    = 50;
+  double J        = 1.0;
+  double U_i      = 2.0;
+  double U_f      = 50;
 
-  int M         = input.getInt("M");
-  double gamma  = input.getReal("gamma",0);
-  bool cache    = input.getYesNo("cacheProgress",false);
+  int M           = input.getInt("M");
+  double gamma    = input.getReal("gamma",0);
+  bool cache      = input.getYesNo("cacheProgress",false);
+  int maxBondDim  = input.getInt("maxBondDim",100);
+  double optTol   = input.getReal("optTol",1e-7);
+  double threshold= input.getReal("threshold",1e-7);
+  
   int seed      = 1;
 
   if(argc > 2) seed = std::stoi(argv[2]);
@@ -57,6 +61,9 @@ int main(int argc, char* argv[]){
   std::cout << "Time-step size ................. " << tstep << "\n";
   std::cout << "GROUP dimension ................ " << M << "\n";
   std::cout << "Gamma (regularisation) ......... " << gamma << "\n";
+  std::cout << "Maximum bond dimension (MPS).... " << maxBondDim << "\n";
+  std::cout << "Truncation threshold (MPS) ..... " << threshold << "\n";
+  std::cout << "Optimization tolerance (IPOPT).. " << optTol << "\n";
   std::cout << "Seed  .......................... " << seed << "\n\n\n";
 
 
@@ -66,9 +73,7 @@ int main(int argc, char* argv[]){
   auto psi_i    = InitializeState(sites,Npart,J,u0.front());
   auto psi_f    = InitializeState(sites,Npart,J,u0.back());
 
-  // auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8,"Maxm=",100});
-  auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8});
-  
+  auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",threshold,"Maxm=",maxBondDim});
   OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,basis,gamma);
 
   // Create a new instance of your nlp
@@ -84,7 +89,7 @@ int main(int argc, char* argv[]){
   // Change some options
   // Note: The following choices are only examples, they might not be
   //       suitable for your optimization problem.
-  app->Options()->SetNumericValue("tol", 1e-8);
+  app->Options()->SetNumericValue("tol", optTol);
   app->Options()->SetStringValue("mu_strategy", "adaptive");
   app->Options()->SetStringValue("hessian_approximation", "limited-memory");
   // app->Options()->SetStringValue("output_file", "logfile_BH.txt");

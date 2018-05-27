@@ -36,10 +36,8 @@ struct gradientTest : testing::Test
 
 
         auto sites      = BoseHubbard(L,locDim);
-        std::cout.setstate(std::ios_base::failbit); // silences the DMRG info        
         auto psi_i      = InitializeState(sites,Npart,J,cstart);
         auto psi_f      = InitializeState(sites,Npart,J,cend);
-        std::cout.clear(); // clears silence        
         auto tDMRG      = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8});
         auto u0         = linseed(cstart,cend,N);
         auto basis      = ControlBasisFactory::buildChoppedSineBasis(u0,tstep,T,M);  
