@@ -12,31 +12,45 @@ using namespace itensor;
 
 
 struct gradientTest : testing::Test
-{    
-    int N;
-    int Npart;
-    int locDim;
-
-    double J;
-    double cstart;
-    double cend;
-    double T;
-    double tstep;
+{   
+    OptimalControl<BH_tDMRG>* OC_GRAPE;
+    OptimalControl<BH_tDMRG>* OC_GROUP;
     
+    int N, M;
+
     gradientTest()
     {
-        N           = 5;
-        Npart       = 5;
-        locDim      = 5;
+        int L           = 5;
+        int Npart       = 5;
+        int locDim      = 5;
 
-        J           = 1.0;
-        cstart      = 3.0;
-        cend        = 10.0;
-        T           = 0.5;
-        tstep       = 1e-2;
+        double J        = 1.0;
+        double cstart   = 2.0;
+        double cend     = 12.0;
+        double T        = 0.15;
+        double tstep    = 1e-2;
+        N               = T/tstep + 1;
+        M               = 10;
+
+        srand((unsigned)time(NULL));
+
+
+        auto sites      = BoseHubbard(L,locDim);
+        std::cout.setstate(std::ios_base::failbit); // silences the DMRG info        
+        auto psi_i      = InitializeState(sites,Npart,J,cstart);
+        auto psi_f      = InitializeState(sites,Npart,J,cend);
+        std::cout.clear(); // clears silence        
+        auto tDMRG      = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8});
+        auto u0         = linseed(cstart,cend,N);
+        auto basis      = ControlBasisFactory::buildChoppedSineBasis(u0,tstep,T,M);  
+
+        OC_GRAPE        = new OptimalControl<BH_tDMRG>(psi_f,psi_i,tDMRG,N,0);
+        OC_GROUP        = new OptimalControl<BH_tDMRG>(psi_f,psi_i,tDMRG,basis,0);
     }
     ~gradientTest()
     {
+        delete OC_GRAPE;
+        delete OC_GROUP;        
     }
 
     std::vector<double> linseed(double a, double b, int n)
@@ -73,29 +87,25 @@ struct gradientTest : testing::Test
         return lin;
     }
 
-    std::vector<double> getNumericRegGrad(std::vector<double> control, OptimalControl<BH_tDMRG>& OCBH)
+    double fRand(double fMin, double fMax)
     {
-        double Jp, Jm, epsilon = 1e-5;
-        std::vector<double> g;
-        g.reserve(control.size());
-
-        size_t count = 0;
-
-        for (auto& ui : control){
-            ui        += epsilon;
-            Jp         = OCBH.getRegularization(control);
-
-            ui        -= 2.0*epsilon;
-            Jm         = OCBH.getRegularization(control);
-
-            ui        += epsilon;
-            g.push_back((Jp-Jm)/(2.0*epsilon));
-        }
-        
-        return g;
+        double f = (double)rand() / RAND_MAX;
+        return fMin + f * (fMax - fMin);
     }
 
-    std::vector<double> getNumericGrad(std::vector<double> control, OptimalControl<BH_tDMRG>& OCBH)
+    std::vector<double> randseed(double min, double max, int n)
+    {
+        std::vector<double> vec;
+
+        for(size_t i = 0; i < n; i++)
+        {
+            vec.push_back(fRand(min, max));
+        }
+        
+        return vec;
+    }
+
+    std::vector<double> getNumericGrad(std::vector<double>& control, OptimalControl<BH_tDMRG>& OCBH)
     {
         double Jp, Jm, epsilon = 1e-5;
         std::vector<double> g;
@@ -117,151 +127,67 @@ struct gradientTest : testing::Test
         return g;
     }
 
-    std::vector<double> getNumericGrad(const ControlBasis& basis, OptimalControl<BH_tDMRG>& OCBH)
-    {
-        auto basiscopy  = basis;
-        auto cArray     = basiscopy.getCArray();
-        double Jp, Jm, epsilon = 1e-5;
-        std::vector<double> g;
-
-        for (auto& ci : cArray){
-            ci        += epsilon;
-            basiscopy.setCArray(cArray);
-            Jp         = OCBH.getCost(basiscopy);
-
-            ci        -= 2.0*epsilon;
-            basiscopy.setCArray(cArray);
-            Jm         = OCBH.getCost(basiscopy);
-
-            ci        += epsilon;
-            basiscopy.setCArray(cArray);
-            g.push_back((Jp-Jm)/(2.0*epsilon));
-        }
-        
-        return g;
-    }
-
-
-
 };
 
 
-TEST_F(gradientTest, testRegularizationGRAPE)
+TEST_F(gradientTest, testGRAPE)
 {
-    auto sites      = BoseHubbard(N,locDim);
-    auto psi_i      = InitializeState(sites,Npart,J,cstart);
-    auto psi_f      = InitializeState(sites,Npart,J,cend);
-    auto tDMRG      = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8});
-    OptimalControl<BH_tDMRG> OC(psi_f,psi_i,tDMRG,1e-4);
-
-    // Test GRAPE regularization gradient for linear control
-    auto lincontrol = linseed(cstart,cend,T/tstep);
-    auto analytic   = OC.getRegularizationGrad(lincontrol);
-    auto numeric    = getNumericRegGrad(lincontrol,OC);
+    // Test GRAPE fidelity gradient
+    auto control    = randseed(2,10,N);
+    auto numeric    = getNumericGrad(control,*OC_GRAPE);
+    auto analytic   = OC_GRAPE->getAnalyticGradient(control);
 
     ASSERT_EQ( analytic.size() , numeric.size() ); 
     
     for(size_t i = 1; i < analytic.size()-1; i++)
     {
-        EXPECT_NEAR(analytic.at(i) , numeric.at(i), 1e-5);
+        // expected to vary by max 0.1%
+        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*1e-3));
     }
 
-    // Test GRAPE regularization gradient for sinus gradient
-    lincontrol = sinseed(cstart,cend,T/tstep);
-    analytic   = OC.getRegularizationGrad(lincontrol);
-    numeric    = getNumericRegGrad(lincontrol,OC);
+    // Test GRAPE regularization gradient 
+    OC_GRAPE->setGamma(1);
+
+    analytic   = OC_GRAPE->getAnalyticGradient(control,false);
+    numeric    = getNumericGrad(control,*OC_GRAPE);
 
     ASSERT_EQ( analytic.size() , numeric.size() ); 
     
     for(size_t i = 1; i < analytic.size()-1; i++)
     {
-        EXPECT_NEAR(analytic.at(i) , numeric.at(i), 1e-5);
-    }
-
-    // Test GRAPE regularization gradient for exponential gradient
-    lincontrol = expseed(cstart,cend,T/tstep);
-    analytic   = OC.getRegularizationGrad(lincontrol);
-    numeric    = getNumericRegGrad(lincontrol,OC);
-
-    ASSERT_EQ( analytic.size() , numeric.size() ); 
-    
-    for(size_t i = 1; i < analytic.size()-1; i++)
-    {
-        EXPECT_NEAR(analytic.at(i) , numeric.at(i), 1e-5);
+        // expected to vary by max 0.001%
+        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*1e-5));
     }
 }
 
 
-TEST_F(gradientTest, testFidelityGROUP)
+TEST_F(gradientTest, testGROUP)
 {
-    auto sites      = BoseHubbard(N,locDim);
-    auto psi_i      = InitializeState(sites,Npart,J,cstart);
-    auto psi_f      = InitializeState(sites,Npart,J,cend);
-    auto tDMRG      = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8});
-    OptimalControl<BH_tDMRG> OC(psi_f,psi_i,tDMRG,1e-6);
-
-    // Build parameterization
-    int M           = 20;
-    auto u0         = linseed(cstart,cend,T/tstep);
-    auto basis      = ControlBasisFactory::buildCBsin(u0,tstep,T,M);
-    auto cArray     = sinseed(0,7,M);
-    basis.setCArray(cArray);
-
-    // Test GROUP gradient
-    auto analytic   = OC.getAnalyticGradient(basis);
-    auto numeric    = getNumericGrad(basis,OC);
-
-    ASSERT_EQ( analytic.size() , numeric.size() ); 
-    
-    for(size_t i = 0; i < analytic.size(); i++)
-    {
-        EXPECT_NEAR(analytic.at(i) , numeric.at(i), 5e-6);
-    }
-}
-
-
-TEST_F(gradientTest, testGradientGRAPE)
-{
-    auto sites      = BoseHubbard(N,locDim);
-    auto psi_i      = InitializeState(sites,Npart,J,cstart);
-    auto psi_f      = InitializeState(sites,Npart,J,cend);
-    auto tDMRG      = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8});
-    OptimalControl<BH_tDMRG> OC(psi_f,psi_i,tDMRG,0);
-
-    // Test GRAPE fidelity gradient for linear control
-    auto lincontrol = linseed(cstart,cend,T/tstep);
-    auto analytic   = OC.getFidelityGrad(lincontrol);
-    auto numeric    = getNumericGrad(lincontrol,OC);
+    // Test GROUP fidelity gradient
+    auto control    = randseed(-4,4,M);
+    auto numeric    = getNumericGrad(control,*OC_GROUP);
+    auto analytic   = OC_GROUP->getAnalyticGradient(control);
 
     ASSERT_EQ( analytic.size() , numeric.size() ); 
     
     for(size_t i = 1; i < analytic.size()-1; i++)
     {
-        EXPECT_NEAR(analytic.at(i) , numeric.at(i), 5e-6);
+        // expected to vary by max 0.1%
+        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*1e-3));
     }
 
-    // Test GRAPE fidelity gradient for sinus gradient
-    lincontrol = sinseed(cstart,cend,T/tstep);
-    analytic   = OC.getFidelityGrad(lincontrol);
-    numeric    = getNumericGrad(lincontrol,OC);
+    // Test GROUP regularization gradient
+    OC_GROUP->setGamma(1);
+
+    analytic   = OC_GROUP->getAnalyticGradient(control,false);
+    numeric    = getNumericGrad(control,*OC_GROUP);
 
     ASSERT_EQ( analytic.size() , numeric.size() ); 
     
     for(size_t i = 1; i < analytic.size()-1; i++)
     {
-        EXPECT_NEAR(analytic.at(i) , numeric.at(i), 5e-6);
-    }
-
-    // Test GRAPE fidelity gradient for exponential gradient
-    lincontrol = expseed(cstart,cend,T/tstep);
-    analytic   = OC.getFidelityGrad(lincontrol);
-    numeric    = getNumericGrad(lincontrol,OC);
-
-    ASSERT_EQ( analytic.size() , numeric.size() ); 
-    
-    for(size_t i = 1; i < analytic.size()-1; i++)
-    {
-        EXPECT_NEAR(analytic.at(i) , numeric.at(i), 5e-6);
+        // expected to vary by max 0.001%
+        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*1e-5));
     }
 }
 

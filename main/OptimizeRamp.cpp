@@ -1,4 +1,5 @@
 #include "BH_nlp.hpp"
+// NLP must be included first due to library clash with ITensor
 #include "OptimalControl.hpp"
 #include "ControlBasisFactory.hpp"
 #include "SeedGenerator.hpp"
@@ -60,18 +61,20 @@ int main(int argc, char* argv[]){
 
 
   auto sites    = BoseHubbard(N,locDim);
-  auto u0       = SeedGenerator::linsigmoidSeed(U_i,U_f,T/tstep+1);
-  auto bControl = ControlBasisFactory::buildCBsin(u0,tstep,T,M);
+  auto u0       = SeedGenerator::linspace(U_i,U_f,T/tstep+1);
+  // auto u0       = SeedGenerator::linsigmoidSeed(U_i,U_f,T/tstep+1);
+  auto basis    = ControlBasisFactory::buildChoppedSineBasis(u0,tstep,T,M);
   auto psi_i    = InitializeState(sites,Npart,J,u0.front());
   auto psi_f    = InitializeState(sites,Npart,J,u0.back());
 
-  auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8,"Maxm=",100});
-  auto times    = SeedGenerator::generateRange(0,tstep,T);
-  OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,gamma);
+  // auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8,"Maxm=",100});
+  auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8});
+  
+  OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,basis,gamma);
 
   // Create a new instance of your nlp
   //  (use a SmartPtr, not raw)
-  SmartPtr<TNLP> mynlp = new BH_nlp(OC,bControl,times,cache);
+  SmartPtr<TNLP> mynlp = new BH_nlp(OC,cache);
 
   // Create a new instance of IpoptApplication
   //  (use a SmartPtr, not raw)
@@ -116,6 +119,7 @@ int main(int argc, char* argv[]){
   // Extract psi for each t, evaluate expectation value
   // of number operator, and save to file.
   auto psi_t = OC.getPsit();
+  auto times = OC.getTimeAxis();
   std::string filename = "ExpectationN.txt";
   std::ofstream myfile (filename);
   if (myfile.is_open())

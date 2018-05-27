@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <iterator>
 #include <algorithm>
+#include <iostream>
 
 typedef std::vector<double> stdvec;
 typedef std::vector< std::vector<double>> rowmat;
@@ -20,12 +21,12 @@ private:
     stdvec c;
     stdvec ucurrent;
     rowmat f;
-    // arma::mat ft;
     rowmat controlJacobian;
     size_t M, N;
 
 
 public:
+    ControlBasis();
     ControlBasis(stdvec& u0, stdvec& S, rowmat& f);
 
     size_t getM() const;

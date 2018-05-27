@@ -8,9 +8,9 @@
 #include "IpOrigIpoptNLP.hpp"
 
 #include "OptimalControl.hpp"
-#include "ControlBasis.hpp"
 #include "BH_tDMRG.hpp"
 #include <assert.h>
+#include <iterator>
 #include <string>
 #include <fstream>
 
@@ -21,14 +21,13 @@ class BH_nlp : public TNLP
 {
 private:
   OC_BH& optControlProb;
-  ControlBasis bControl;
   std::vector<double> times;
+  std::vector<double> initialCoeffs;
   bool cacheProgress;
 
 public:
   /** default constructor */
-  BH_nlp(OC_BH& optControlProb, ControlBasis& bControl,
-                    std::vector<double>& times, bool cacheProgress = false);
+  BH_nlp(OC_BH& optControlProb, bool cacheProgress = false);
 
   /** default destructor */
   virtual ~BH_nlp();

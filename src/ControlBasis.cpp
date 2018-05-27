@@ -1,5 +1,10 @@
 #include "ControlBasis.hpp"
 
+ControlBasis::ControlBasis()
+{
+}
+
+
 ControlBasis::ControlBasis(stdvec& u0, stdvec& S, rowmat& f)
     : u0(u0), S(S), f(f), N(u0.size()), M(f.front().size())
 {
@@ -40,7 +45,7 @@ stdvec ControlBasis::convertControl( const stdvec& control, const bool new_contr
         stdvec u = u0;
         for (size_t i = 0; i < N; i++)
         {
-            u[i] += S[i]*std::inner_product(f[i].begin(), f[i].end(), control.begin(), 0);
+            u[i] += S[i]*std::inner_product(f[i].begin(), f[i].end(), control.begin(), 0.0);
         }
 
         ucurrent = u;
