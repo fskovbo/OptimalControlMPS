@@ -59,12 +59,12 @@ double SeedGenerator::randomDouble(double min, double max){
 std::vector<double> SeedGenerator::linsigmoidSeed(double u_start, double u_end, size_t length){
   // f = a*x + b/(1+exp(-c*(x-d))) + e
   auto x  = linspace(0,100,length);
-  auto a  = randomDouble(0.01,0.4);
+  auto a  = randomDouble(0.01,0.15);
   auto b  = u_end-u_start-a*x.back();
   auto c  = randomDouble(0.06,0.18);
   auto d  = randomDouble(60,80);
 
-  auto S1 = sigmoid(x,2.5,1.5);
+  auto S1 = sigmoid(x,0.7,5);
   auto S2 = sigmoid(x,-0.9,100-7);
 
   for (size_t i = S1.size()/2; i < S1.size(); i++) {
