@@ -70,8 +70,8 @@ int main(int argc, char* argv[]){
   auto sites    = BoseHubbard(N,locDim);
   auto u0       = SeedGenerator::linsigmoidSeed(U_i,U_f,T/tstep+1);
   auto basis    = ControlBasisFactory::buildChoppedSineBasis(u0,tstep,T,M);
-  auto psi_i    = InitializeState(sites,Npart,J,u0.front(),maxBondDim,threshold,false);
-  auto psi_f    = InitializeState(sites,Npart,J,u0.back(),maxBondDim,threshold,false);
+  auto psi_i    = InitializeState(sites,Npart,J,u0.front(),maxBondDim,threshold);
+  auto psi_f    = InitializeState(sites,Npart,J,u0.back(),maxBondDim,threshold);
 
   auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",threshold,"Maxm=",maxBondDim});
   OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,basis,gamma);
