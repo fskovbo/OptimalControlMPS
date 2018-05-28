@@ -34,7 +34,7 @@ int main(int argc, char* argv[]){
   int locDim      = input.getInt("d");
 
   double J        = 1.0;
-  double U_i      = 2.0;
+  double U_i      = 2.5;
   double U_f      = 50;
 
   int M           = input.getInt("M");
@@ -70,8 +70,8 @@ int main(int argc, char* argv[]){
   auto sites    = BoseHubbard(N,locDim);
   auto u0       = SeedGenerator::linsigmoidSeed(U_i,U_f,T/tstep+1);
   auto basis    = ControlBasisFactory::buildChoppedSineBasis(u0,tstep,T,M);
-  auto psi_i    = InitializeState(sites,Npart,J,u0.front());
-  auto psi_f    = InitializeState(sites,Npart,J,u0.back());
+  auto psi_i    = InitializeState(sites,Npart,J,u0.front(),maxBondDim,threshold,false);
+  auto psi_f    = InitializeState(sites,Npart,J,u0.back(),maxBondDim,threshold,false);
 
   auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",threshold,"Maxm=",maxBondDim});
   OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,basis,gamma);
