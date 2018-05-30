@@ -5,7 +5,7 @@
 #include "BH_sites.h"
 #include "BH_tDMRG.hpp"
 #include "InitializeState.hpp"
-#include "Amoeba.h"
+#include "Amoeba.hpp"
 
 
 template<typename OC>
@@ -104,31 +104,21 @@ int main(int argc, char* argv[])
 	auto sites    = BoseHubbard(N,locDim);
 	auto u0       = SeedGenerator::linsigmoidSeed(U_i,U_f,T/tstep+1);
 	auto basis    = ControlBasisFactory::buildChoppedSineBasis(u0,tstep,T,M);
-    auto psi_i    = InitializeState(sites,Npart,J,u0.front(),maxBondDim,threshold,false);
-    auto psi_f    = InitializeState(sites,Npart,J,u0.back(),maxBondDim,threshold,false);
+    auto psi_i    = InitializeState(sites,Npart,J,u0.front(),maxBondDim,threshold);
+    auto psi_f    = InitializeState(sites,Npart,J,u0.back(),maxBondDim,threshold);
 
 	auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",threshold,"Maxm=",maxBondDim});
 	OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,basis,gamma);
 
-	// Cost function encapsulated in lambda
-	std::size_t dimension = M;
+	// Cost function encapsulated wrapper
 
-    double uMin = 2.0;
-    double uMax = 50.0;
+    auto costFunc = OCWrapper<decltype(OC)>(OC,2,100,gammaBound);
 
-    auto costFunc = OCWrapper<decltype(OC)>(OC,2,50,gammaBound);
-
-   // auto costFunc = [dimension,&OC](std::valarray<double> input){
-//		std::vector<double> vecInput(dimension);
-//		vecInput.assign(std::begin(input),std::end(input));
-//		return OC.getCost(vecInput);
-//	};
-	
-	std::valarray<double> initialPoint(dimension);
-	for (std::size_t i = 0; i < dimension; ++i) {
+	std::valarray<double> initialPoint(M);
+	for (std::size_t i = 0; i < M; ++i) {
 		initialPoint[i] = 1;
 	}
-	Amoeba optimizer(dimension);
+	Amoeba optimizer(M);
 	
 	// Optimize cost
 	auto result = optimizer.optimize(initialPoint,costFunc);
