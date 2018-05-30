@@ -7,6 +7,49 @@
 #include "InitializeState.hpp"
 #include "Amoeba.h"
 
+
+template<typename OC>
+class OCWrapper
+{
+private:
+    OC& optObj;
+
+    double calcPenalty(std::vector<double> input){
+        std::vector<double> control = optObj.getControl(input);
+
+        double above = 0;
+        double below = 0;
+
+        for(std::size_t i = 0; i< control.size(); ++i){
+            if(control[i]>uMax){
+                above = above + (control[i]-uMax)*(control[i]-uMax);
+            }
+            if(control[i]<uMin){
+                below = below + (control[i]-uMin)*(control[i]-uMin);
+            }
+        }
+        return gammaBound*(above+below);
+    }
+
+public:
+    double gammaBound;
+    double uMin;
+    double uMax;
+
+    OCWrapper(OC& optObj,double uMin, double uMax,double gamma = 100):optObj(optObj),uMin(uMin),uMax(uMax){
+        gammaBound = gamma;
+    }
+
+
+    double operator ()(std::valarray<double> input){
+        std::vector<double> vecInput(input.size());
+        vecInput.assign(std::begin(input),std::end(input));
+
+        return optObj.getCost(vecInput) + calcPenalty(vecInput);
+    }
+};
+
+
 int main(int argc, char* argv[])
 {
 	if(argc < 2) {
@@ -33,6 +76,7 @@ int main(int argc, char* argv[])
 	int maxBondDim  = input.getInt("maxBondDim",100);
 	double optTol   = input.getReal("optTol",1e-7);
 	double threshold= input.getReal("threshold",1e-7);
+    double gammaBound= input.getReal("gammaBound",100);
 	
 	int seed      = 1;
 
@@ -60,37 +104,25 @@ int main(int argc, char* argv[])
 	auto sites    = BoseHubbard(N,locDim);
 	auto u0       = SeedGenerator::linsigmoidSeed(U_i,U_f,T/tstep+1);
 	auto basis    = ControlBasisFactory::buildChoppedSineBasis(u0,tstep,T,M);
-	auto psi_i    = InitializeState(sites,Npart,J,u0.front(),maxBondDim,threshold);
-	auto psi_f    = InitializeState(sites,Npart,J,u0.back(),maxBondDim,threshold);
+    auto psi_i    = InitializeState(sites,Npart,J,u0.front(),maxBondDim,threshold,false);
+    auto psi_f    = InitializeState(sites,Npart,J,u0.back(),maxBondDim,threshold,false);
 
 	auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",threshold,"Maxm=",maxBondDim});
 	OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,basis,gamma);
 
-	/* // Rosenbrock function
-	double a = 1.0;
-	double b = 100;
-
-	std::size_t dimension = 2;
-
-	auto rosen = [a,b,dimension](std::valarray<double> input) {
-		double val = 0;
-		for (std::size_t i = 0; i < dimension - 1; ++i) {
-			double xip1 = input[i + 1];
-			double xi = input[i];
-			val = val + (a - xi)*(a - xi) + b * (xip1 - xi * xi)*(xip1 - xi * xi);
-		}
-		return val;
-	}; */
-
-
 	// Cost function encapsulated in lambda
 	std::size_t dimension = M;
 
-	auto costFunc = [&](std::valarray<double> input){
-		std::vector<double> vecInput(dimension);
-		vecInput.assign(std::begin(input),std::end(input));
-		return OC.getCost(vecInput);
-	};
+    double uMin = 2.0;
+    double uMax = 50.0;
+
+    auto costFunc = OCWrapper<decltype(OC)>(OC,2,50,gammaBound);
+
+   // auto costFunc = [dimension,&OC](std::valarray<double> input){
+//		std::vector<double> vecInput(dimension);
+//		vecInput.assign(std::begin(input),std::end(input));
+//		return OC.getCost(vecInput);
+//	};
 	
 	std::valarray<double> initialPoint(dimension);
 	for (std::size_t i = 0; i < dimension; ++i) {
