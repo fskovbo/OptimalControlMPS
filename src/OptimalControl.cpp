@@ -105,7 +105,7 @@ stdvec OptimalControl<TimeStepper>::getTimeAxis( ) const
   std::vector<double> time;
   double tstep = timeStepper.getTstep();
   double t = 0;
-  while(t <= N*tstep + 1e-5)
+  while( fabs(t - N*tstep) > 1e-2*tstep) 
   {
     time.push_back(t);
     t += tstep;         // could recode to better handle rounding errors

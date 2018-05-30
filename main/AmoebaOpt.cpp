@@ -171,11 +171,11 @@ int main(int argc, char* argv[])
     std::ofstream myfile2 ("ProgressCache.txt");
     if (myfile2.is_open())
     {
-		for (int i = 0; i < std::get<2>(result).size(); i++) {
+		for (int i = 0; i < std::get<3>(result).size(); i++) {
 			myfile2 << iter++ << "\t";
 			myfile2 << std::get<2>(result)[i] << "\t";
 			myfile2 << times.back() << "\t";
-			myfile2 << std::get<2>(result)[i] << "\n";
+			myfile2 << std::get<3>(result)[i] << "\n";
 		}
     }
     else std::cout << "Unable to open file\n";
