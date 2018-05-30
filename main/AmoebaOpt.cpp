@@ -6,6 +6,8 @@
 #include "BH_tDMRG.hpp"
 #include "InitializeState.hpp"
 #include "Amoeba.hpp"
+#include <fstream>
+#include <stdlib.h>
 
 
 template<typename OC>
@@ -57,7 +59,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	  auto input      = InputGroup(argv[1],"input");
+	auto input      = InputGroup(argv[1],"input");
 
 	double tstep    = input.getReal("tstep",1e-2);
 	double T        = input.getReal("T");
@@ -130,15 +132,15 @@ int main(int argc, char* argv[])
 	for (auto& xi : std::get<1>(result)) {
 		std::cout << xi << std::endl;
 	}
-	return 0;
-	std::cout << "costHistory" << std::endl;
-	for (auto& xi : std::get<2>(result)) {
-		std::cout << xi << std::endl;
-	}
-	std::cout << "func_evalsHistory" << std::endl;
-	for (auto& xi : std::get<3>(result)) {
-		std::cout << xi << std::endl;
-	}
+	
+	// std::cout << "costHistory" << std::endl;
+	// for (auto& xi : std::get<2>(result)) {
+	// 	std::cout << xi << std::endl;
+	// }
+	// std::cout << "func_evalsHistory" << std::endl;
+	// for (auto& xi : std::get<3>(result)) {
+	// 	std::cout << xi << std::endl;
+	// }
 
 	// Save results
 	std::vector<double> initCont(M);
@@ -177,4 +179,6 @@ int main(int argc, char* argv[])
 		}
     }
     else std::cout << "Unable to open file\n";
+
+	return 0;
 }
