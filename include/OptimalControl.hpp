@@ -11,40 +11,46 @@
 
 using namespace itensor;
 using stdvec = std::vector<double>;
-
+using rowmat = std::vector< std::vector<double>>;
 
 
 template<class TimeStepper>
 class OptimalControl{
 private:
-
-  TimeStepper& timeStepper;
+  TimeStepper timeStepper;
+  ControlBasis basis;
   double gamma, tstep;
+  size_t N, M;
   IQMPS psi_target, psi_init;
 
   std::vector<IQMPS> psi_t;
+  bool GRAPE;
 
+
+  void    calcPsi(const stdvec& control);
+  double  calcCost(const stdvec& control, const bool new_control = true);
+  double  calcRegularization(const stdvec& control) const;
+  stdvec  calcRegularizationGrad(const stdvec& control) const;
+  stdvec  calcFidelityGrad(const stdvec& control, const bool new_control = true);
+  stdvec  calcAnalyticGradient(const stdvec& control, const bool new_control = true);
+  stdvec  calcFidelityForAllT(const stdvec& control, const bool new_control = true);
 
 public:
-  OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, double gamma);
+  OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, size_t N, double gamma);
+  OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, ControlBasis& basis, double gamma);
 
-  double getRegularization(const stdvec& control);
-  stdvec getRegularizationGrad(const stdvec& control);
-  stdvec getFidelityGrad(const stdvec& control, const bool new_control = true);
   std::vector<IQMPS> getPsit() const;
-
-  // Optimal control using time-descretized control 
-  void calcPsi(const stdvec& control);
+  size_t getM() const;
+  size_t getN() const;
+  stdvec getControl( const stdvec& control );
+  stdvec getTimeAxis( ) const;
+  void setGamma( double newgamma );
+ 
+  void propagatePsi(const stdvec& control);
   double getCost(const stdvec& control, const bool new_control = true);
   stdvec getAnalyticGradient(const stdvec& control, const bool new_control = true);
   stdvec getFidelityForAllT(const stdvec& control, const bool new_control = true);
-
-  // Optimal control using user-defined control parameterization
-  void calcPsi(const ControlBasis& basis);
-  double getCost(const ControlBasis& basis, const bool new_control = true);
-  stdvec getAnalyticGradient(const ControlBasis& basis, const bool new_control = true);
-  stdvec getFidelityForAllT(const ControlBasis& basis, const bool new_control = true);
-
+  rowmat getControlJacobian() const;
   
 };
 

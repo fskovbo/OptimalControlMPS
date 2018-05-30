@@ -60,7 +60,7 @@ void BH_tDMRG::setTstep(const double tstep_)
 }
 
 
-double BH_tDMRG::getTstep()
+double BH_tDMRG::getTstep() const
 {
   return tstep;
 }
@@ -119,14 +119,14 @@ void BH_tDMRG::doStep(IQMPS& psi, const GateList& JGates)
       auto i1 = g->i1();
       auto i2 = g->i2();
       if (movingFromLeft) {
-        AA = psi.Aref(i1)*psi.Aref(i2)*UGates1.at(i1-1)*UGates1.at(i2-1)*prime(g->gate(),Site);
+        AA = psi.Aref(i1)*psi.Aref(i2)*UGates1[i1-1]*UGates1[i2-1]*prime(g->gate(),Site);
 
         // if N even apply lonely Ugate at right side in the end of left move
         if (i2 == sites.N() && sites.N() % 2 == 0) { // N is even
           AA *= prime(prime(UGates2.back(),Site),Site);
         }
       } else {
-        AA = psi.Aref(i1)*psi.Aref(i2)*g->gate()*prime(UGates2.at(i1-1),Site)*prime(UGates2.at(i2-1),Site);
+        AA = psi.Aref(i1)*psi.Aref(i2)*g->gate()*prime(UGates2[i1-1],Site)*prime(UGates2[i2-1],Site);
       }
 
       AA.noprime(Site);

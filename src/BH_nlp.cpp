@@ -1,29 +1,30 @@
 #include "BH_nlp.hpp"
 
 // constructor
-BH_nlp::BH_nlp(OC_BH& optControlProb, ControlBasis& bControl, std::vector<double>& times, bool cacheProgress)
- : optControlProb(optControlProb), bControl(bControl), times(times), cacheProgress(cacheProgress) {
-
+BH_nlp::BH_nlp(OC_BH& optControlProb, bool cacheProgress)
+ : optControlProb(optControlProb), cacheProgress(cacheProgress)
+ {
+   times = optControlProb.getTimeAxis();
  }
 
 //destructor
 BH_nlp::~BH_nlp()
-{}
+{
+}
 
 bool BH_nlp::get_nlp_info(Ipopt::Index& n, Ipopt::Index& m, Ipopt::Index& nnz_jac_g,
                              Ipopt::Index& nnz_h_lag, IndexStyleEnum& index_style)
 {
   // The problem described has M variables
-  n = bControl.getM();
+  n = optControlProb.getM();
 
   // N inequality constraints for Umax and Umin each
-  m = bControl.getN();
+  m = optControlProb.getN();
 
   // in this example the Jacobian is dense and contains m*n = N*M nonzeros
   nnz_jac_g = m*n;
 
-  // the Hessian is also dense and has 16 total nonzeros, but we
-  // only need the lower left corner (since it is symmetric)
+  // the Hessian is approximated using L-BFGS
   nnz_h_lag = 0;
 
   // use the C style indexing (0-based)
@@ -38,15 +39,15 @@ bool BH_nlp::get_bounds_info(Ipopt::Index n, Number* x_l, Number* x_u,
   // here, the n and m we gave IPOPT in get_nlp_info are passed back to us.
   // If desired, we could assert to make sure they are what we think they are.
 
-  // the variables have no lower bounds
+  // lower bounds of the variable
   for (Ipopt::Index i = 0; i < n; i++)
     x_l[i] = -10;
 
-  // the variables have no upper bounds
+  // upper bounds of the variables
   for (Ipopt::Index i = 0; i < n; i++)
     x_u[i] = 10;
 
-
+  // constraint functions here are limits on GRAPE control
   double Umin = 2.0;
   double Umax = 100;
   for (Ipopt::Index i = 0; i < m; i++) {
@@ -69,31 +70,29 @@ bool BH_nlp::get_starting_point(Ipopt::Index n, bool init_x, Number* x,
   assert(init_z == false);
   assert(init_lambda == false);
 
-  // initialize to the given starting point
-  auto c = bControl.getCArray();
-  std::copy(c.begin(), c.end(), x);
+  // initialize to the given starting point - here 0
+  // store initial coefficients for later
+  for (Ipopt::Index i = 0; i < n; i++)
+  {
+    x[i] = 0;
+  }
+  initialCoeffs = std::vector<double>(x, x + n);
 
   return true;
 }
 
 bool BH_nlp::eval_f(Ipopt::Index n, const Number* x, bool new_x, Number& obj_value)
 {
-  if (new_x){
-    bControl.setCArray(x,n);
-  }
-
-  obj_value = optControlProb.getCost(bControl,new_x);
+  std::vector<double> control(x, x + n);
+  obj_value = optControlProb.getCost(control,new_x);
 
   return true;
 }
 
 bool BH_nlp::eval_grad_f(Ipopt::Index n, const Number* x, bool new_x, Number* grad_f)
 {
-  if (new_x){
-    bControl.setCArray(x,n);
-  }
-
-  auto grad = optControlProb.getAnalyticGradient(bControl,new_x);
+  std::vector<double> control(x, x + n);
+  auto grad = optControlProb.getAnalyticGradient(control,new_x);
   std::copy(grad.begin(), grad.end(), grad_f);
 
   return true;
@@ -101,13 +100,15 @@ bool BH_nlp::eval_grad_f(Ipopt::Index n, const Number* x, bool new_x, Number* gr
 
 bool BH_nlp::eval_g(Ipopt::Index n, const Number* x, bool new_x, Ipopt::Index m, Number* g)
 {
+  std::vector<double> control(x, x + n);
+
   if (new_x){
-    bControl.setCArray(x,n);
     // must calculate psi_t for other eval_* functions if new_x
-    optControlProb.calcPsi(bControl);
+    optControlProb.propagatePsi(control);
   }
 
-  bControl.convertControl(g);
+  auto tcontrol = optControlProb.getControl(control);
+  std::copy(tcontrol.begin(), tcontrol.end(), g);
 
   return true;
 }
@@ -117,9 +118,9 @@ bool BH_nlp::eval_jac_g(Ipopt::Index n, const Number* x, bool new_x,
                            Number* values)
 {
   if (new_x){
-    bControl.setCArray(x,n);
     // must calculate psi_t for other eval_* functions if new_x
-    optControlProb.calcPsi(bControl);
+    std::vector<double> control(x, x + n);
+    optControlProb.propagatePsi(control);
   }
 
   if (values == NULL) {
@@ -134,7 +135,19 @@ bool BH_nlp::eval_jac_g(Ipopt::Index n, const Number* x, bool new_x,
   }
   else {
     // return the values of the Jacobian of the constraints
-    bControl.getConstraintJacobian(values);
+    // data format is vector of vectors (row matrix)
+    auto tJac = optControlProb.getControlJacobian();
+
+    // TODO: constraint Jac is constant -> store here and copy reference to values
+    size_t ind = 0;
+    for(auto& row : tJac)
+    {
+      for (auto& val : row)
+      {
+        values[ind++] = val;
+      }
+    }    
+
   }
 
   return true;
@@ -168,22 +181,23 @@ void BH_nlp::finalize_solution(SolverReturn status,
 
 
   // write initial and final control to file
-  bControl.setCArray(x,n); // set control to solution
-  auto u_i  = bControl.getU0();
-  auto f_i  = optControlProb.getFidelityForAllT(u_i);
-  auto u    = bControl.convertControl();
-  auto f    = optControlProb.getFidelityForAllT(bControl);
+  std::vector<double> finalCoeffs(x, x + n);
+
+  auto initialControl     = optControlProb.getControl(initialCoeffs);
+  auto finalControl       = optControlProb.getControl(finalCoeffs);
+  auto initialFidelities  = optControlProb.getFidelityForAllT(initialCoeffs);
+  auto finalFidelities    = optControlProb.getFidelityForAllT(finalCoeffs);
 
   std::string filename = "BHrampInitialFinal.txt";
   std::ofstream myfile (filename);
   if (myfile.is_open())
   {
-    for (int i = 0; i < u.size(); i++) {
+    for (int i = 0; i < m; i++) {
       myfile << times.at(i) << "\t";
-      myfile << u_i.at(i) << "\t";
-      myfile << f_i.at(i) << "\t";
-      myfile << u.at(i) << "\t";
-      myfile << f.at(i) << "\n";
+      myfile << initialControl.at(i) << "\t";
+      myfile << initialFidelities.at(i) << "\t";
+      myfile << finalControl.at(i) << "\t";
+      myfile << finalFidelities.at(i) << "\n";
     }
     myfile.close();
   }

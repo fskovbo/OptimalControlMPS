@@ -14,7 +14,8 @@
 namespace itensor{
 
 // Sets up a state in superfluid phase (U = 0, J = 1)
-inline IQMPS SetupSuperfluid(SiteSet const& sites, int Npart){
+inline IQMPS SetupSuperfluid(SiteSet const& sites, int Npart, bool silent = true){        
+  if (silent) std::cout.setstate(std::ios_base::failbit); // silences the DMRG info
   int N = sites.N();
 
   if (Npart > N) { printf("Npart > N not supported\n"); }
@@ -52,13 +53,18 @@ inline IQMPS SetupSuperfluid(SiteSet const& sites, int Npart){
   auto energy = dmrg(psi,H,sweeps,{"Quiet",true});
   printf("Energy w.r.t. superfluid Hamiltonian: %f\n",energy);
 
+  std::cout.clear(); // clears silence        
+  
+
   return psi;
 }
 
 
 // Sets up a state in Mot-Insulator phase (U = 1, J = 1e-3)
 // Note: the ITensor DMRG algorithm struggles converging for J << U 
-inline IQMPS SetupMottInsulator(SiteSet const& sites, int Npart){
+inline IQMPS SetupMottInsulator(SiteSet const& sites, int Npart, bool silent = true){
+  if (silent) std::cout.setstate(std::ios_base::failbit); // silences the DMRG info
+  
   int N = sites.N();
 
   if (Npart > N) { printf("Npart > N not supported\n"); }
@@ -97,13 +103,16 @@ inline IQMPS SetupMottInsulator(SiteSet const& sites, int Npart){
 
   auto energy = dmrg(psi,H,sweeps,{"Quiet",true});
   printf("Energy w.r.t. Mott-Insulator Hamiltonian: %f\n",energy);
+  std::cout.clear(); // clears silence        
 
   return psi;
 }
 
 
 // Sets up custom state
-inline IQMPS InitializeState(const SiteSet& sites, const int Npart, const double J, const double U){
+inline IQMPS InitializeState(const SiteSet& sites, const int Npart, const double J, const double U, bool silent = true){
+  if (silent) std::cout.setstate(std::ios_base::failbit); // silences the DMRG info
+  
   int N = sites.N();
   auto state = InitState(sites);
   int p = Npart;
@@ -139,8 +148,60 @@ inline IQMPS InitializeState(const SiteSet& sites, const int Npart, const double
   sweeps.noise() = 1E-7,1E-8,0.0;
 
   auto energy = dmrg(psi,H,sweeps,{"Quiet",true});
+
+  std::cout.clear(); // clears silence        
+  
   return psi;
 }
+
+
+// Sets up custom state
+inline IQMPS InitializeState(const SiteSet& sites, const int Npart, const double J,const double U,
+                              const int maxBondDim, const double threshold, bool silent = true)
+{
+  if (silent) std::cout.setstate(std::ios_base::failbit); // silences the DMRG info
+  
+  int N = sites.N();
+  auto state = InitState(sites);
+  int p = Npart;
+
+  if (Npart > N) { printf("Npart > N not supported\n"); }
+  for(int i = N; i >= 1; --i)
+      {
+      if (p >= 1) {
+        state.set(i,"Occ1");
+        p -= 1;
+      }
+      else
+          {
+          state.set(i,"Emp");
+          }
+      }
+  auto psi = IQMPS(state);
+
+  auto ampo = AutoMPO(sites);
+  for(int i = 1; i < N; ++i) {
+    ampo += -J,"A",i,"Adag",i+1;
+    ampo += -J,"Adag",i,"A",i+1;
+  }
+  for(int i = 1; i <= N; ++i) {
+    ampo += 0.5*U,"N(N-1)",i;
+  }
+  auto H = IQMPO(ampo);
+
+  auto sweeps = Sweeps(10);
+  sweeps.maxm() = 10,20,50,maxBondDim;
+  sweeps.cutoff() = threshold;
+  sweeps.niter() = 2;
+  sweeps.noise() = 1E-7,1E-8,0.0;
+
+  auto energy = dmrg(psi,H,sweeps,{"Quiet",true});
+
+  std::cout.clear(); // clears silence        
+  
+  return psi;
+}
+
 
 } // end namespace
 #endif
