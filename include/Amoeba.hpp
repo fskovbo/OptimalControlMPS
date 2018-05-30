@@ -106,6 +106,7 @@ class Amoeba {
 	public:
 		Amoeba(std::size_t dimension) : dimension(dimension) {
 			v.reserve(dimension + 1);
+			display = true;
 		}
 
 		template<typename F>

@@ -139,4 +139,42 @@ int main(int argc, char* argv[])
 	for (auto& xi : std::get<3>(result)) {
 		std::cout << xi << std::endl;
 	}
+
+	// Save results
+	std::vector<double> initCont(M);
+	std::copy(begin(initialPoint), end(initialPoint), begin(initCont));
+	auto initialFidelities = OC.getFidelityForAllT(initCont);
+
+	std::vector<double> finalCont(M);
+	std::copy(begin(std::get<1>(result)), end(std::get<1>(result)), begin(finalCont));
+	auto finalFidelities = OC.getFidelityForAllT(finalCont);
+	auto finalControl = OC.getControl(finalCont);
+
+	auto times = OC.getTimeAxis();
+	std::ofstream myfile1 ("BHrampInitialFinal.txt");
+	if (myfile1.is_open())
+	{
+		for (int i = 0; i < OC.getN(); i++) {
+			myfile1 << times.at(i) << "\t";
+			myfile1 << u0.at(i) << "\t";
+			myfile1 << initialFidelities.at(i) << "\t";
+			myfile1 << finalControl.at(i) << "\t";
+			myfile1 << finalFidelities.at(i) << "\n";
+		}
+		myfile1.close();
+	}
+	else std::cout << "Unable to open file\n";
+
+	size_t iter = 0;
+    std::ofstream myfile2 ("ProgressCache.txt");
+    if (myfile2.is_open())
+    {
+		for (int i = 0; i < std::get<2>(result).size(); i++) {
+			myfile2 << iter++ << "\t";
+			myfile2 << std::get<2>(result)[i] << "\t";
+			myfile2 << times.back() << "\t";
+			myfile2 << std::get<2>(result)[i] << "\n";
+		}
+    }
+    else std::cout << "Unable to open file\n";
 }
