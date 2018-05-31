@@ -188,6 +188,10 @@ void BH_tDMRG::doStep(IQMPS& psi, const GateList& JGates)
 
 }
 
+Args BH_tDMRG::getArgs() const{
+    return args;
+}
+
 
 IQMPO BH_tDMRG::propagatorDeriv(const double& control_n)
 {

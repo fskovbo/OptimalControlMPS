@@ -37,6 +37,7 @@ public:
   void step(IQMPS& psi, const double from, const double to, bool propagateForward = true);
   IQMPO propagatorDeriv(const double& control_n);
   double getTstep() const;
+  Args getArgs() const;
 };
 
 #endif

@@ -139,6 +139,34 @@ stdvec OptimalControl<TimeStepper>::calcFidelityGrad(const stdvec& control, cons
   return g;
 }
 
+template<class TimeStepper>
+rowmat OptimalControl<TimeStepper>::calcHessian(const stdvec& control, const bool new_control){
+
+    rowmat Hessian(N, std::vector<double>(N, 0));
+
+    calcPsi(control);
+    calcXi(control);
+    auto overlapFactor = overlapC(psi_t.back(),psi_target);
+
+    for(size_t i=0;i<N;++i){
+        auto psiH = exactApplyMPO(timeStepper.propagatorDeriv(control[i]),psi_t[i],timeStepper.getArgs()); // Consider the norm, maybe a problem?
+        // Calculate diagonal term
+        auto xiH = exactApplyMPO(timeStepper.propagatorDeriv(control[i]),xi_t[i],timeStepper.getArgs()); // Could be optimized away
+        double val1 = (Cplx_i*overlapFactor*overlapC(xiH,psiH)).imag();
+        double val2 = (overlapC(xi_t[i],timeStepper.propagatorDeriv(control[i]),psi_t[i])*overlapC(psi_t[i],timeStepper.propagatorDeriv(control[i]),xi_t[i])).real();
+        Hessian[i][i] = -tstep*tstep*(val1+val2);
+        // Off diagonal terms
+        for(size_t j = i+1;j<N;++j){
+            timeStepper.step(psiH,control[j-1],control[j],true);
+            auto xiH = exactApplyMPO(timeStepper.propagatorDeriv(control[j]),xi_t[j],timeStepper.getArgs()); // Could be optimized away
+            double val1 = (Cplx_i*overlapFactor*overlapC(xiH,psiH)).imag();
+            double val2 = (overlapC(xi_t[i],timeStepper.propagatorDeriv(control[i]),psi_t[i])*overlapC(psi_t[j],timeStepper.propagatorDeriv(control[j]),xi_t[j])).real();
+            Hessian[i][j] = -tstep*tstep*(val1+val2);
+            Hessian[j][i] = Hessian[i][j];
+        }
+    }
+    return Hessian;
+}
 
 template<class TimeStepper>
 void OptimalControl<TimeStepper>::calcPsi(const stdvec& control)
@@ -154,6 +182,21 @@ void OptimalControl<TimeStepper>::calcPsi(const stdvec& control)
   }
 }
 
+template<class TimeStepper>
+void OptimalControl<TimeStepper>::calcXi(const stdvec& control)
+{
+  const bool propagateForward = false;
+  auto xiT = psi_target;
+  xi_t.clear();
+  xi_t.push_back(xiT);
+
+  for (size_t i = N-1; i > 0; i--) {
+    timeStepper.step(xiT,control[i],control[i-1],propagateForward);
+    xi_t.push_back(xiT);
+  }
+
+  std::reverse(xi_t.begin(),xi_t.end());
+}
 
 template<class TimeStepper>
 double OptimalControl<TimeStepper>::calcCost(const stdvec& control, const bool new_control)
@@ -241,6 +284,18 @@ stdvec OptimalControl<TimeStepper>::getAnalyticGradient(const stdvec& control, c
   }
 }
 
+template<class TimeStepper>
+rowmat OptimalControl<TimeStepper>::getHessian(const stdvec& control, const bool new_control)
+{
+  if (GRAPE) {
+    return calcHessian(control,new_control);
+  }
+//  else {
+//    return basis.convertGradient(
+//                      calcAnalyticGradient(basis.convertControl(control,new_control),new_control)
+//                                );
+//  }
+}
 
 template<class TimeStepper>
 stdvec OptimalControl<TimeStepper>::getFidelityForAllT(const stdvec& control, const bool new_control)

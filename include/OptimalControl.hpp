@@ -24,15 +24,19 @@ private:
   IQMPS psi_target, psi_init;
 
   std::vector<IQMPS> psi_t;
+  std::vector<IQMPS> xi_t;
+
   bool GRAPE;
 
 
   void    calcPsi(const stdvec& control);
+  void    calcXi(const stdvec& control);
   double  calcCost(const stdvec& control, const bool new_control = true);
   double  calcRegularization(const stdvec& control) const;
   stdvec  calcRegularizationGrad(const stdvec& control) const;
-  stdvec  calcFidelityGrad(const stdvec& control, const bool new_control = true);
+  stdvec  calcFidelityGrad(const stdvec& control, const bool new__tcontrol = true);
   stdvec  calcAnalyticGradient(const stdvec& control, const bool new_control = true);
+  rowmat  calcHessian(const stdvec& control, const bool new_control);
   stdvec  calcFidelityForAllT(const stdvec& control, const bool new_control = true);
 
 public:
@@ -49,6 +53,7 @@ public:
   void propagatePsi(const stdvec& control);
   double getCost(const stdvec& control, const bool new_control = true);
   stdvec getAnalyticGradient(const stdvec& control, const bool new_control = true);
+  rowmat getHessian(const stdvec& control, const bool new_control = true);
   stdvec getFidelityForAllT(const stdvec& control, const bool new_control = true);
   rowmat getControlJacobian() const;
   
