@@ -99,4 +99,36 @@ inline std::vector<Cplx> expectationValues(SiteSet const& sites, IQMPS& psi, std
   return expVals;
 }
 
+inline std::vector<double> entanglementEntropy(SiteSet const& sites, IQMPS& psi)
+{
+  auto N = sites.N();
+  std::vector<double> Svec;
+
+  for(size_t i = 1; i < N; i++)
+  {
+    psi.position(i); 
+
+    //Compute two-site wavefunction for sites (i,i+1)
+    IQTensor wf = psi.A(i)*psi.A(i+1);
+
+    //SVD this wavefunction to get the spectrum
+    //of density-matrix eigenvalues
+    auto U = psi.A(i);
+    IQTensor S,V;
+    auto spectrum = svd(wf,U,S,V);
+
+    //Apply von Neumann formula
+    //spectrum.eigs() is a Vector containing
+    //the density matrix eigenvalues
+    //(squares of the singular values)
+    double SvN = 0.;
+    for(auto p : spectrum.eigs())
+    {
+      if(p > 1E-12) SvN += -p*log(p);
+    }
+    Svec.push_back(SvN);
+  }
+  return Svec;
+}
+
 #endif
