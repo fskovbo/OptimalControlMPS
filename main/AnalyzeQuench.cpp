@@ -76,12 +76,12 @@ int main(int argc, char* argv[])
         printfln("No input detected ... using standard parameters");
     }
 
-    double tstep  = 1e-2;
-    double T      = 5;
+    double tstep  = 5e-3;
+    double T      = 3;
 
-    int N         = 5;
-    int Npart     = 5;
-    int locDim    = 4;
+    int N         = 20;
+    int Npart     = 20;
+    int locDim    = 7;
 
     // load InputFile_BHcontrol.txt
     if (argc >= 2)
@@ -105,21 +105,16 @@ int main(int argc, char* argv[])
     auto psi_i      = InitializeState(sites,Npart,J,U_i);
     auto psi_f      = InitializeState(sites,Npart,J,U_f);
     auto stepper    = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8,"Maxm=",1000});
-    OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,timesteps,0);
+
 
     //
     // set ramp type
     //
-    auto ramp       = quenchRamp(U_i,U_f,timesteps);
+    auto ramp             = quenchRamp(U_i,U_f,timesteps);
     std::string filename1 = "EntanglementEntropies_Quench.txt";
     std::string filename2 = "SingleParticleCorr_Quench.txt";
     std::string filename3 = "DensityDensityCorr_Quench.txt";
 
-    //
-    // run simulation
-    //
-    OC.propagatePsi(ramp);
-    auto psit = OC.getPsit();
 
     //
     // calculate entanglement entropy and correlations
@@ -129,11 +124,33 @@ int main(int argc, char* argv[])
     rowmat DDcorrelations;
 
     // examing correlations from row 5-11
-    size_t startpoint = 2;
-    size_t endpoint = 4;
+    size_t startpoint = 7;
+    size_t endpoint = 13;
 
-    for (auto& psi : psit)
+
+    //
+    // run simulation
+    //
+    auto psi0 = psi_i;
+    auto S = entanglementEntropy(sites,psi_i);
+        
+    stdvec SP, DD;
+    for(size_t i = startpoint+1; i <= endpoint; i++)
     {
+        SP.push_back( correlationFunction(sites,psi_i,"Adag",startpoint,"A",i).real() );
+        DD.push_back( correlationFunction(sites,psi_i,"N",startpoint,"N",i).real() );
+    }
+
+    entropies.push_back(S);
+    SPcorrelations.push_back(SP);
+    DDcorrelations.push_back(DD);   
+
+    for (size_t i = 0; i < ramp.size()-1; i++)
+    {
+        stepper.step(psi0,ramp[i],ramp[i+1],true);
+        auto psi = psi0; // make copy to make sure psi0 is not altered
+        
+        //calculate correlations
         auto S = entanglementEntropy(sites,psi);
         
         stdvec SP, DD;
@@ -145,8 +162,12 @@ int main(int argc, char* argv[])
 
         entropies.push_back(S);
         SPcorrelations.push_back(SP);
-        DDcorrelations.push_back(DD);        
+        DDcorrelations.push_back(DD); 
+
+        std::cout << "Step " << i+1 << " done.\n";
     }
+
+  
 
     //
     // save data
