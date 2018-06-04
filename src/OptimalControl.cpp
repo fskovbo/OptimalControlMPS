@@ -150,18 +150,19 @@ rowmat OptimalControl<TimeStepper>::calcHessian(const stdvec& control, const boo
 
     for(size_t i=0;i<N;++i){
         auto psiH = exactApplyMPO(timeStepper.propagatorDeriv(control[i]),psi_t[i],timeStepper.getArgs()); // Consider the norm, maybe a problem?
+        auto normiH = psiH.norm();
         // Calculate diagonal term
         auto xiH = exactApplyMPO(timeStepper.propagatorDeriv(control[i]),xi_t[i],timeStepper.getArgs()); // Could be optimized away
-        double val1 = (Cplx_i*overlapFactor*overlapC(xiH,psiH)).imag();
-        double val2 = (overlapC(xi_t[i],timeStepper.propagatorDeriv(control[i]),psi_t[i])*overlapC(psi_t[i],timeStepper.propagatorDeriv(control[i]),xi_t[i])).real();
-        Hessian[i][i] = -tstep*tstep*(val1+val2);
+        double val1 = -(overlapFactor*overlapC(xiH,psiH)).imag();
+        double val2 = -(overlapC(xi_t[i],timeStepper.propagatorDeriv(control[i]),psi_t[i])*overlapC(psi_t[i],timeStepper.propagatorDeriv(control[i]),xi_t[i])).real();
+        Hessian[i][i] = tstep*tstep*(val1+val2);
         // Off diagonal terms
         for(size_t j = i+1;j<N;++j){
             timeStepper.step(psiH,control[j-1],control[j],true);
             auto xiH = exactApplyMPO(timeStepper.propagatorDeriv(control[j]),xi_t[j],timeStepper.getArgs()); // Could be optimized away
-            double val1 = (Cplx_i*overlapFactor*overlapC(xiH,psiH)).imag();
-            double val2 = (overlapC(xi_t[i],timeStepper.propagatorDeriv(control[i]),psi_t[i])*overlapC(psi_t[j],timeStepper.propagatorDeriv(control[j]),xi_t[j])).real();
-            Hessian[i][j] = -tstep*tstep*(val1+val2);
+            double val1 = -(overlapFactor*overlapC(xiH,psiH)*normiH).imag();
+            double val2 = -(overlapC(xi_t[j],timeStepper.propagatorDeriv(control[j]),psi_t[j])*overlapC(psi_t[i],timeStepper.propagatorDeriv(control[i]),xi_t[i])).real();
+            Hessian[i][j] = tstep*tstep*(val1+val2);
             Hessian[j][i] = Hessian[i][j];
         }
     }
