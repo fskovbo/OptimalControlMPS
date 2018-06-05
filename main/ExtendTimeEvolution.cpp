@@ -10,6 +10,7 @@
 #include "BH_tDMRG.hpp"
 #include "InitializeState.hpp"
 #include <stdlib.h>
+#include <iomanip>
 #include <time.h>
 #include <string>
 
@@ -67,9 +68,8 @@ int main(int argc, char* argv[]){
     }
 
     auto sites    = BoseHubbard(N,locDim);
-    auto basis    = ControlBasisFactory::buildChoppedSineBasis(u0,tstep,T,M);
-    auto psi_i    = InitializeState(sites,Npart,J,u0.front(),maxBondDim,threshold);
-    auto psi_f    = InitializeState(sites,Npart,J,u0.back(),maxBondDim,threshold);
+    auto psi_i    = InitializeState(sites,Npart,J,control_init.front(),maxBondDim,threshold);
+    auto psi_f    = InitializeState(sites,Npart,J,control_init.back(),maxBondDim,threshold);
 
     auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",threshold,"Maxm=",maxBondDim});
     OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,times.size(),gamma);
