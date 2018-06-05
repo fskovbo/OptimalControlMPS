@@ -114,6 +114,7 @@ int main(int argc, char* argv[])
     std::string filename1 = "EntanglementEntropies_Quench.txt";
     std::string filename2 = "SingleParticleCorr_Quench.txt";
     std::string filename3 = "DensityDensityCorr_Quench.txt";
+    std::string filename4 = "RescaledDensityDensityCorr_Quench.txt";
 
 
     //
@@ -122,6 +123,7 @@ int main(int argc, char* argv[])
     rowmat entropies;
     rowmat SPcorrelations;
     rowmat DDcorrelations;
+    rowmat rDDcorrelations;
 
     // examing correlations from row 5-11
     size_t startpoint = 7;
@@ -134,16 +136,23 @@ int main(int argc, char* argv[])
     auto psi0 = psi_i;
     auto S = entanglementEntropy(sites,psi_i);
         
-    stdvec SP, DD;
+    stdvec SP, DD, rDD;
+    double exp0 = expectationValue(sites,psi_i, "N", startpoint).real();
     for(size_t i = startpoint+1; i <= endpoint; i++)
     {
         SP.push_back( correlationFunction(sites,psi_i,"Adag",startpoint,"A",i).real() );
-        DD.push_back( correlationFunction(sites,psi_i,"N",startpoint,"N",i).real() );
+        double DDcorr = correlationFunction(sites,psi_i,"N",startpoint,"N",i).real();
+        DD.push_back( DDcorr );
+
+        double expr = expectationValue(sites,psi_i, "N", i).real();
+        rDD.push_back(DDcorr - exp0*expr);
     }
 
     entropies.push_back(S);
     SPcorrelations.push_back(SP);
-    DDcorrelations.push_back(DD);   
+    DDcorrelations.push_back(DD);
+    rDDcorrelations.push_back(DD);
+
 
     for (size_t i = 0; i < ramp.size()-1; i++)
     {
@@ -153,16 +162,22 @@ int main(int argc, char* argv[])
         //calculate correlations
         auto S = entanglementEntropy(sites,psi);
         
-        stdvec SP, DD;
+        stdvec SP, DD, rDD;
+        double exp0 = expectationValue(sites,psi, "N", startpoint).real();
         for(size_t i = startpoint+1; i <= endpoint; i++)
         {
             SP.push_back( correlationFunction(sites,psi,"Adag",startpoint,"A",i).real() );
-            DD.push_back( correlationFunction(sites,psi,"N",startpoint,"N",i).real() );
+            double DDcorr = correlationFunction(sites,psi,"N",startpoint,"N",i).real();
+            DD.push_back( DDcorr );
+
+            double expr = expectationValue(sites,psi, "N", i).real();
+            rDD.push_back(DDcorr - exp0*expr);
         }
 
         entropies.push_back(S);
         SPcorrelations.push_back(SP);
-        DDcorrelations.push_back(DD); 
+        DDcorrelations.push_back(DD);
+        rDDcorrelations.push_back(rDD); 
 
         std::cout << "Step " << i+1 << " done.\n";
     }
@@ -175,6 +190,7 @@ int main(int argc, char* argv[])
     saveRowmat(entropies,filename1);
     saveRowmat(SPcorrelations,filename2);
     saveRowmat(DDcorrelations,filename3);
+    saveRowmat(rDDcorrelations,filename4);
     
     return 0;
 }

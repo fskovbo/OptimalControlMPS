@@ -118,7 +118,7 @@ int main(int argc, char* argv[])
 
 	std::valarray<double> initialPoint(M);
 	for (std::size_t i = 0; i < M; ++i) {
-		initialPoint[i] = 1;
+		initialPoint[i] = 0;
 	}
 	Amoeba optimizer(M);
 	
