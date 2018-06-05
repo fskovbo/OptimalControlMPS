@@ -41,11 +41,11 @@ bool BH_nlp::get_bounds_info(Ipopt::Index n, Number* x_l, Number* x_u,
 
   // lower bounds of the variable
   for (Ipopt::Index i = 0; i < n; i++)
-    x_l[i] = -10;
+    x_l[i] = -20;
 
   // upper bounds of the variables
   for (Ipopt::Index i = 0; i < n; i++)
-    x_u[i] = 10;
+    x_u[i] = 20;
 
   // constraint functions here are limits on GRAPE control
   double Umin = 2.0;
