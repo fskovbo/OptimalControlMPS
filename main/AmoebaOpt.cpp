@@ -175,7 +175,8 @@ int main(int argc, char* argv[])
 			myfile2 << iter++ << "\t";
 			myfile2 << std::get<2>(result)[i] << "\t";
 			myfile2 << times.back() << "\t";
-			myfile2 << std::get<3>(result)[i] << "\n";
+			myfile2 << std::get<3>(result)[i] << "\t";
+			myfile2 << OC.getM() << "\n";
 		}
     }
     else std::cout << "Unable to open file\n";

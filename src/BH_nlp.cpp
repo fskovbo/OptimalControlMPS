@@ -225,7 +225,8 @@ bool BH_nlp::intermediate_callback(AlgorithmMode mode,
       outfile << iter << "\t";
       outfile << obj_value << "\t";
       outfile << times.back() << "\t";
-      outfile << 2 + ls_trials << "\n";
+      outfile << 2 + ls_trials << "\t";
+      outfile << optControlProb.getM() << "\n";
 
     }
     else std::cout << "Unable to open file\n";

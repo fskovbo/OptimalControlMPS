@@ -110,11 +110,11 @@ int main(int argc, char* argv[])
     //
     // set ramp type
     //
-    auto ramp             = quenchRamp(U_i,U_f,timesteps);
-    std::string filename1 = "EntanglementEntropies_Quench.txt";
-    std::string filename2 = "SingleParticleCorr_Quench.txt";
-    std::string filename3 = "DensityDensityCorr_Quench.txt";
-    std::string filename4 = "RescaledDensityDensityCorr_Quench.txt";
+    auto ramp             = expRamp(U_i,U_f,timesteps);
+    std::string filename1 = "EntanglementEntropies_Exp.txt";
+    std::string filename2 = "SingleParticleCorr_Exp.txt";
+    std::string filename3 = "DensityDensityCorr_Exp.txt";
+    std::string filename4 = "RescaledDensityDensityCorr_Exp.txt";
 
 
     //

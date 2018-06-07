@@ -12,10 +12,23 @@
 
 using namespace itensor;
 
+std::vector<double> expRamp(double Ui, double Uf, size_t length)
+{
+    double a = Ui;
+    double b = log(Uf/Ui)/length;
+    std::vector<double> ramp;
+    
+    for(size_t i = 0; i < length; i++)
+    {
+        ramp.push_back( a*exp(b*i) );
+    }
+    return ramp;
+}
+
 
 int main(int argc, char* argv[])
 {
-    std::vector<int> maxBondDim = {10 , 20, 30, 40 , 50 , 500 };
+    std::vector<int> maxBondDim = { 20, 30, 40 , 50 , 1000 };
 
     if (argc < 3)
     {
@@ -23,11 +36,11 @@ int main(int argc, char* argv[])
         printfln("No input detected ... using standard parameters");
     }
 
-    double tstep  = 1e-2;
-    double T      = 6;
+    double tstep  = 5e-3;
+    double T      = 5;
 
-    int N         = 15;
-    int Npart     = 15;
+    int N         = 20;
+    int Npart     = 20;
     int locDim    = 7;
 
     // load InputFile_BHcontrol.txt
@@ -44,7 +57,7 @@ int main(int argc, char* argv[])
 
 
     double J      = 1.0;
-    double U_i    = 2.0;
+    double U_i    = 2.5;
     double U_f    = 50;
 
 
@@ -65,19 +78,12 @@ int main(int argc, char* argv[])
     else
     {
         times   = SeedGenerator::generateRange(0,tstep,T);
-        control = SeedGenerator::adiabaticSeed(U_i,U_f,times.size());
+        control = expRamp(U_i,U_f,times.size());
     }
 
     auto sites      = BoseHubbard(N,locDim);
-    auto psi_i      = InitializeState(sites,Npart,J,control.front());
-    auto psi_f      = InitializeState(sites,Npart,J,control.back());
-
-    // extend duration and controls
-    for (size_t i = 1; i <= 50; i++)
-    {
-        times.push_back(T + i*tstep);
-        control.push_back( control.back() );
-    }
+    auto psi_i      = InitializeState(sites,Npart,J,U_i);
+    auto psi_f      = InitializeState(sites,Npart,J,U_f);
 
     // Create an output string stream
     std::ostringstream streamObj1;
@@ -94,7 +100,7 @@ int main(int argc, char* argv[])
     {
         std::cout << "Calculating time-evolution for maxM = " << maxM << "\n";
 
-        auto stepper    = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-6,"Maxm=",maxM});
+        auto stepper    = BH_tDMRG(sites,J,tstep,{"Cutoff=",1E-8,"Maxm=",maxM});
         OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,control.size(),0);
         
         // run time evolution and get fidelity
