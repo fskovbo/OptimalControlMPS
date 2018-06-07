@@ -132,7 +132,7 @@ struct HessianTest : testing::Test
     {
         rowmat numHessian(N, std::vector<double>(N, 0));
 
-        double epsilon = 1e-8;
+        double epsilon = 1e-3;
 
         double fx = OCBH.getCost(control);
         std::vector<double> feps;
@@ -163,7 +163,7 @@ struct HessianTest : testing::Test
     {
         rowmat numHessian(N, std::vector<double>(N, 0));
 
-        double epsilon = 1e-5;
+        double epsilon = 1e-2;
 
         double fx = OCBH.getCost(control);
         std::vector<double> feps;
@@ -212,7 +212,7 @@ TEST_F(HessianTest, testGRAPE)
     auto control    = linseed(2,10,N);
  //   auto numeric    = getNumericGrad(control,*OC_GRAPE);
     auto analyticHessian   = OC_GRAPE->getHessian(control);
-    rowmat numHessian = getNumericHessianCentral(control,*OC_GRAPE);
+    rowmat numHessian = getNumericHessianForward(control,*OC_GRAPE);
 
     ASSERT_EQ( numHessian.size() , analyticHessian.size() );
     ASSERT_EQ( numHessian.front().size() , analyticHessian.front().size() );
@@ -233,6 +233,8 @@ TEST_F(HessianTest, testGRAPE)
     }
     anaOutput.close();
     numOutput.close();
+
+    ASSERT_EQ(1 , 2);
 
 //    // Test GRAPE regularization gradient
 //    OC_GRAPE->setGamma(1);

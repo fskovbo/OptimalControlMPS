@@ -9,7 +9,7 @@ BH_tDMRG::BH_tDMRG(const SiteSet& sites, const double J, const double tstep, con
   // derivative of propagator is constant
   auto ampo = AutoMPO(sites);
   for(int i = 1; i <= sites.N(); ++i) {
-    ampo += tstep*0.5,"N(N-1)",i;
+    ampo += 0.5,"N(N-1)",i;
   }
   propDeriv = IQMPO(ampo);
 }
