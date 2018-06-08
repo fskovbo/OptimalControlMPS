@@ -141,7 +141,6 @@ struct HessianTest : testing::Test
             control[i] += epsilon;
             feps.push_back(OCBH.getCost(control));
             control[i] -= epsilon;
-            std::cout << "feps[i=" << i << "] = " << feps[i] << std::endl;
         }
 
         for(size_t i=0;i<N;++i){
@@ -149,7 +148,6 @@ struct HessianTest : testing::Test
                 control[i] += epsilon;
                 control[j] += epsilon;
                 double fepsiepsj = OCBH.getCost(control);
-                std::cout << "fepsiepsj[i=" << i << ",j=" << j << "] = " << fepsiepsj << std::endl;
 
                 numHessian[i][j]=(fepsiepsj-feps[i]-feps[j]+fx)/(epsilon*epsilon);
                 numHessian[j][i] = numHessian[i][j];
@@ -159,82 +157,32 @@ struct HessianTest : testing::Test
         }
         return numHessian;
     }
-    rowmat getNumericHessianCentral(std::vector<double>& control, OptimalControl<BH_tDMRG>& OCBH)
-    {
-        rowmat numHessian(N, std::vector<double>(N, 0));
-
-        double epsilon = 1e-2;
-
-        double fx = OCBH.getCost(control);
-        std::vector<double> feps;
-
-        for(size_t i=0;i<N;++i){
-            for(size_t j=i;j<N;++j){
-                control[i] -= epsilon;
-                control[j] -= epsilon;
-                double fmimj = OCBH.getCost(control);
-                control[i] += epsilon;
-                control[j] += epsilon;
-
-                control[i] -= epsilon;
-                control[j] += epsilon;
-                double fmipj = OCBH.getCost(control);
-                control[i] += epsilon;
-                control[j] -= epsilon;
-
-                control[i] += epsilon;
-                control[j] -= epsilon;
-                double fpimj = OCBH.getCost(control);
-                control[i] -= epsilon;
-                control[j] += epsilon;
-
-                control[i] += epsilon;
-                control[j] += epsilon;
-                double fpipj = OCBH.getCost(control);
-                control[i] -= epsilon;
-                control[j] -= epsilon;
-
-              //  double fepsiepsj = OCBH.getCost(control);
-              //  std::cout << "fepsiepsj[i=" << i << ",j=" << j << "] = " << fepsiepsj << std::endl;
-
-                numHessian[i][j]=(fpipj-fpimj-fmipj+fmimj)/(4.0*epsilon*epsilon);
-                numHessian[j][i] = numHessian[i][j];
-            }
-        }
-        return numHessian;
-    }
+  
 };
 
 
 TEST_F(HessianTest, testGRAPE)
 {
     // Test GRAPE fidelity gradient
-    auto control    = linseed(2,10,N);
- //   auto numeric    = getNumericGrad(control,*OC_GRAPE);
-    auto analyticHessian   = OC_GRAPE->getHessian(control);
-    rowmat numHessian = getNumericHessianForward(control,*OC_GRAPE);
+    auto control            = randseed(2,10,N);
+    auto analyticHessian    = OC_GRAPE->getHessian(control);
+    auto numHessian         = getNumericHessianForward(control,*OC_GRAPE);
 
     ASSERT_EQ( numHessian.size() , analyticHessian.size() );
     ASSERT_EQ( numHessian.front().size() , analyticHessian.front().size() );
+    ASSERT_EQ( analyticHessian.size() , N );
+    ASSERT_EQ( analyticHessian.front().size() , N );
     
-    std::ofstream anaOutput, numOutput;
-    anaOutput.open("analyticHessian");
-    numOutput.open("numericHessian");
-
-    for(size_t i = 0; i < analyticHessian.size(); i++){
-        for(size_t j=0; j < analyticHessian.front().size(); ++j ){
-            anaOutput << analyticHessian[i][j] << "\t";
-            numOutput << numHessian[i][j] << "\t";
-            //std::cout << "i=" << i << "  j=" << j << " Difference=" << diff << std::endl;
-            //EXPECT_NEAR(numHessian[i][j],analyticHessian[i][j], fabs(numHessian[i][j]*1e-3));
+    
+    for(size_t i = 1; i < N-1; i++)
+    {
+        for(size_t j = 1; j < N-1; j++)
+        {
+            EXPECT_NEAR(numHessian[i][j], analyticHessian[i][j], fabs(numHessian[i][j])*5e-3); 
         }
-        anaOutput << std::endl;
-        numOutput << std::endl;
     }
-    anaOutput.close();
-    numOutput.close();
+    
 
-    ASSERT_EQ(1 , 2);
 
 //    // Test GRAPE regularization gradient
 //    OC_GRAPE->setGamma(1);

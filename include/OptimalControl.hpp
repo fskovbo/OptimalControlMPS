@@ -25,12 +25,16 @@ private:
 
   std::vector<IQMPS> psi_t;
   std::vector<IQMPS> xi_t;
+  std::vector<Cplx> divT;
 
-  bool GRAPE;
+  bool GRAPE, BFGS, calculatedXi;
+  // calculatedXi tells whether Xi+divT have been calculated for same control
 
 
   void    calcPsi(const stdvec& control);
   void    calcXi(const stdvec& control);
+  void    calcDivT(const stdvec& control);
+  void    calcPsiXiDivT(const stdvec& control);
   double  calcCost(const stdvec& control, const bool new_control = true);
   double  calcRegularization(const stdvec& control) const;
   stdvec  calcRegularizationGrad(const stdvec& control) const;
@@ -40,8 +44,8 @@ private:
   stdvec  calcFidelityForAllT(const stdvec& control, const bool new_control = true);
 
 public:
-  OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, size_t N, double gamma);
-  OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, ControlBasis& basis, double gamma);
+  OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, size_t N, double gamma, bool BFGS = false);
+  OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, ControlBasis& basis, double gamma, bool BFGS = false);
 
   std::vector<IQMPS> getPsit() const;
   size_t getM() const;
