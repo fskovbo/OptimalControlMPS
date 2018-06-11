@@ -62,6 +62,27 @@ stdvec OptimalControl<TimeStepper>::calcRegularizationGrad(const stdvec& control
 
 
 template<class TimeStepper>
+rowmat OptimalControl<TimeStepper>::calcRegularizationHessian(const stdvec& control) const
+{
+  rowmat Hessian(N, std::vector<double>(N, 0));
+  
+  for(size_t i = 1; i < N-1; i++)
+  {
+    Hessian[i][i-1] = -gamma/tstep;
+    Hessian[i][i+1] = -gamma/tstep;
+    Hessian[i][i]   = 2.0*gamma/tstep;
+  }
+
+  Hessian[0][0]     = 2.0*gamma/tstep;
+  Hessian[0][1]     = -gamma/tstep;
+  Hessian[N-1][N-1] = 2.0*gamma/tstep;
+  Hessian[N-1][N-2] = -gamma/tstep;
+  
+  return Hessian;
+}
+
+
+template<class TimeStepper>
 std::vector<IQMPS> OptimalControl<TimeStepper>::getPsit() const
 {
   return psi_t;
@@ -176,8 +197,8 @@ rowmat OptimalControl<TimeStepper>::calcHessian(const stdvec& control, const boo
     calcDivT(control);
   }
 
-  rowmat Hessian(N, std::vector<double>(N, 0));
-  auto overlapFactor = overlapC(psi_t.back(),psi_target);
+  rowmat Hessian      = calcRegularizationHessian(control);
+  auto overlapFactor  = overlapC(psi_t.back(),psi_target);
   std::vector<IQMPS> xiHlist;
   xiHlist.reserve(N);
   
@@ -194,7 +215,7 @@ rowmat OptimalControl<TimeStepper>::calcHessian(const stdvec& control, const boo
     // Calculate diagonal term
     double val1 = (overlapFactor*overlapC(xiHlist[i],psiH)).real();
     double val2 = -( divT[i] * conj(divT[i]) ).real();
-    Hessian[i][i] = tstep*tstep*(val1+val2);
+    Hessian[i][i] += tstep*tstep*(val1+val2);
 
     // Off diagonal terms
     for(size_t j = i+1; j < N; ++j)
@@ -202,8 +223,8 @@ rowmat OptimalControl<TimeStepper>::calcHessian(const stdvec& control, const boo
       timeStepper.step(psiH,control[j-1],control[j],true);
       double val1 = (overlapFactor*overlapC(xiHlist[j],psiH)*normiH).real();
       double val2 = -( divT[i] * conj(divT[j]) ).real();
-      Hessian[i][j] = tstep*tstep*(val1+val2);
-      Hessian[j][i] = Hessian[i][j]; // dont calculate edges
+      Hessian[i][j] += tstep*tstep*(val1+val2);
+      Hessian[j][i] += tstep*tstep*(val1+val2); // dont calculate edges
     }
   }
   return Hessian;
@@ -359,11 +380,11 @@ rowmat OptimalControl<TimeStepper>::getHessian(const stdvec& control, const bool
   if (GRAPE) {
     return calcHessian(control,new_control);
   }
-//  else {
-//    return basis.convertGradient(
-//                      calcAnalyticGradient(basis.convertControl(control,new_control),new_control)
-//                                );
-//  }
+ else {
+   return basis.convertHessian(
+                     calcHessian(basis.convertControl(control,new_control),new_control)
+                               );
+ }
 }
 
 template<class TimeStepper>

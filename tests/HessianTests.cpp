@@ -30,10 +30,10 @@ struct HessianTest : testing::Test
         double J        = 1.0;
         double cstart   = 2.0;
         double cend     = 12.0;
-        double T        = 0.15;
+        double T        = 0.1;
         double tstep    = 1e-2;
         N               = T/tstep + 1;
-        M               = 10;
+        M               = 8;
 
         srand((unsigned)time(NULL));
 
@@ -130,21 +130,22 @@ struct HessianTest : testing::Test
 
     rowmat getNumericHessianForward(std::vector<double>& control, OptimalControl<BH_tDMRG>& OCBH)
     {
-        rowmat numHessian(N, std::vector<double>(N, 0));
+        auto Nparam = control.size();
+        rowmat numHessian(Nparam, std::vector<double>(Nparam, 0));
 
         double epsilon = 1e-3;
 
         double fx = OCBH.getCost(control);
         std::vector<double> feps;
 
-        for(size_t i=0;i<N;++i){
+        for(size_t i = 0; i < Nparam; ++i){
             control[i] += epsilon;
             feps.push_back(OCBH.getCost(control));
             control[i] -= epsilon;
         }
 
-        for(size_t i=0;i<N;++i){
-            for(size_t j=i;j<N;++j){
+        for(size_t i = 0; i < Nparam; ++i){
+            for(size_t j = i; j < Nparam;++j){
                 control[i] += epsilon;
                 control[j] += epsilon;
                 double fepsiepsj = OCBH.getCost(control);
@@ -182,53 +183,72 @@ TEST_F(HessianTest, testGRAPE)
         }
     }
     
+    // Test GRAPE regularization gradient
+    OC_GRAPE->setGamma(1);
 
+    auto analyticRegHessian    = OC_GRAPE->getHessian(control,false);
+    auto numRegHessian         = getNumericHessianForward(control,*OC_GRAPE);
 
-//    // Test GRAPE regularization gradient
-//    OC_GRAPE->setGamma(1);
-
-//    analytic   = OC_GRAPE->getAnalyticGradient(control,false);
-//    numeric    = getNumericGrad(control,*OC_GRAPE);
-
-//    ASSERT_EQ( analytic.size() , numeric.size() );
-    
-//    for(size_t i = 1; i < analytic.size()-1; i++)
-//    {
-//        // expected to vary by max 0.001%
-//        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*1e-5));
-//    }
+    ASSERT_EQ( numHessian.size() , analyticHessian.size() );
+    ASSERT_EQ( numHessian.front().size() , analyticHessian.front().size() );
+    ASSERT_EQ( analyticHessian.size() , N );
+    ASSERT_EQ( analyticHessian.front().size() , N );
+        
+    for(size_t i = 1; i < N-1; i++)
+    {
+        for(size_t j = 1; j < N-1; j++)
+        {
+            double Areg = analyticRegHessian[i][j] - analyticHessian[i][j];
+            double Nreg = numRegHessian[i][j] - numHessian[i][j];
+            EXPECT_NEAR(Areg, Nreg, 1e-5 ); 
+        }
+    }
 }
 
 
-//TEST_F(gradientTest, testGROUP)
-//{
-//    // Test GROUP fidelity gradient
-//    auto control    = randseed(-4,4,M);
-//    auto numeric    = getNumericGrad(control,*OC_GROUP);
-//    auto analytic   = OC_GROUP->getAnalyticGradient(control);
-
-//    ASSERT_EQ( analytic.size() , numeric.size() );
+TEST_F(HessianTest, testGROUP)
+{
+   // Test GROUP fidelity gradient
+    auto control            = randseed(-2,2,M);
+    auto analyticHessian    = OC_GROUP->getHessian(control);
+    auto numHessian         = getNumericHessianForward(control,*OC_GROUP);
     
-//    for(size_t i = 1; i < analytic.size()-1; i++)
-//    {
-//        // expected to vary by max 0.1%
-//        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*1e-3));
-//    }
 
-//    // Test GROUP regularization gradient
-//    OC_GROUP->setGamma(1);
-
-//    analytic   = OC_GROUP->getAnalyticGradient(control,false);
-//    numeric    = getNumericGrad(control,*OC_GROUP);
-
-//    ASSERT_EQ( analytic.size() , numeric.size() );
+    ASSERT_EQ( numHessian.size() , analyticHessian.size() );
+    ASSERT_EQ( numHessian.front().size() , analyticHessian.front().size() );
+    ASSERT_EQ( analyticHessian.size() , M );
+    ASSERT_EQ( analyticHessian.front().size() , M );
     
-//    for(size_t i = 1; i < analytic.size()-1; i++)
-//    {
-//        // expected to vary by max 0.001%
-//        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*1e-5));
-//    }
-//}
+    
+    for(size_t i = 0; i < M; i++)
+    {
+        for(size_t j = 0; j < M; j++)
+        {
+            EXPECT_NEAR(numHessian[i][j], analyticHessian[i][j], fabs(numHessian[i][j])*5e-2); 
+        }
+    }
+    
+    // Test GROUP regularization gradient
+    OC_GROUP->setGamma(1);
+
+    auto analyticRegHessian    = OC_GROUP->getHessian(control,false);
+    auto numRegHessian         = getNumericHessianForward(control,*OC_GROUP);
+
+    ASSERT_EQ( numHessian.size() , analyticHessian.size() );
+    ASSERT_EQ( numHessian.front().size() , analyticHessian.front().size() );
+    ASSERT_EQ( analyticHessian.size() , M );
+    ASSERT_EQ( analyticHessian.front().size() , M );
+        
+    for(size_t i = 0; i < M; i++)
+    {
+        for(size_t j = 0; j < M; j++)
+        {
+            double Areg = analyticRegHessian[i][j] - analyticHessian[i][j];
+            double Nreg = numRegHessian[i][j] - numHessian[i][j];
+            EXPECT_NEAR(Areg, Nreg, 1e-5 ); 
+        }
+    }
+}
 
 
 int main(int argc, char **argv) {

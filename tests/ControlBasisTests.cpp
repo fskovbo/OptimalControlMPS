@@ -129,6 +129,61 @@ TEST_F(SimpleMatrixTest, testControlJacobian)
 } 
 
 
+TEST_F(SimpleMatrixTest, testConvertHessian)
+{
+    // test Hessu = zeros
+    rowmat Hessu1(basis->getN(), std::vector<double>(basis->getN(), 0));
+    auto Hessc1 = basis->convertHessian(Hessu1);
+
+    ASSERT_EQ( Hessc1.size() , basis->getM() );
+    ASSERT_EQ( Hessc1.front().size() , basis->getM() );  
+    for(size_t i = 0; i < basis->getM(); i++)
+    {
+        for(size_t j = 0; j < basis->getM(); j++)
+        {
+            EXPECT_NEAR(Hessc1[i][j] , 0.0 , 1e-8);
+        }
+        
+    }
+
+    // test Hessu = ones
+    rowmat Hessu2(basis->getN(), std::vector<double>(basis->getN(), 1));
+    auto Hessc2 = basis->convertHessian(Hessu2);
+
+    ASSERT_EQ( Hessc2.size() , basis->getM() );
+    ASSERT_EQ( Hessc2.front().size() , basis->getM() );  
+    for(size_t i = 0; i < basis->getM(); i++)
+    {
+        for(size_t j = 0; j < basis->getM(); j++)
+        {
+            EXPECT_NEAR(Hessc2[i][j] , (basis->getN()*2.0)*(basis->getN()*2.0) , 1e-8);
+        }
+        
+    }
+
+    // test Hessu = identity
+    rowmat Hessu3(basis->getN(), std::vector<double>(basis->getN(), 0));
+    for(size_t i = 0; i < basis->getN(); i++)
+    {
+        Hessu3[i][i] = 1;
+    }
+    
+    auto Hessc3 = basis->convertHessian(Hessu3);
+
+    ASSERT_EQ( Hessc3.size() , basis->getM() );
+    ASSERT_EQ( Hessc3.front().size() , basis->getM() );  
+    for(size_t i = 0; i < basis->getM(); i++)
+    {
+        for(size_t j = 0; j < basis->getM(); j++)
+        {
+            EXPECT_NEAR(Hessc3[i][j] , basis->getN()*4.0 , 1e-8);
+        }
+        
+    }
+
+} 
+
+
 TEST_F(ChoppedSineTest, testConvertControl)
 {
     // test c = {0 , 0 , ...}

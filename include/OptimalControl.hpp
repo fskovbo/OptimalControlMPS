@@ -38,9 +38,10 @@ private:
   double  calcCost(const stdvec& control, const bool new_control = true);
   double  calcRegularization(const stdvec& control) const;
   stdvec  calcRegularizationGrad(const stdvec& control) const;
+  rowmat  calcRegularizationHessian(const stdvec& control) const;
   stdvec  calcFidelityGrad(const stdvec& control, const bool new__tcontrol = true);
   stdvec  calcAnalyticGradient(const stdvec& control, const bool new_control = true);
-  rowmat  calcHessian(const stdvec& control, const bool new_control);
+  rowmat  calcHessian(const stdvec& control, const bool new_control = true);
   stdvec  calcFidelityForAllT(const stdvec& control, const bool new_control = true);
 
 public:

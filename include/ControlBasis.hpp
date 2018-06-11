@@ -22,6 +22,7 @@ private:
     stdvec ucurrent;
     rowmat f;
     rowmat controlJacobian;
+    rowmat vmat;
     size_t M, N;
 
 
@@ -34,6 +35,7 @@ public:
 
     stdvec convertControl( const stdvec& control, const bool new_control = true ); 
     stdvec convertGradient( const stdvec& gradu ) const;
+    rowmat convertHessian( const rowmat& Hessu ) const;
     rowmat getControlJacobian( ) const;
 
 };
