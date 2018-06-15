@@ -24,8 +24,12 @@ bool BH_nlp::get_nlp_info(Ipopt::Index& n, Ipopt::Index& m, Ipopt::Index& nnz_ja
   // in this example the Jacobian is dense and contains m*n = N*M nonzeros
   nnz_jac_g = m*n;
 
-  // the Hessian is approximated using L-BFGS
-  nnz_h_lag = 0;
+  // // the Hessian is approximated using L-BFGS
+  // nnz_h_lag = 0;
+
+  // the Hessian is also dense and has n*n total nonzeros, but we
+  // only need the lower left corner (since it is symmetric)
+  nnz_h_lag = (n*n+n)/2;
 
   // use the C style indexing (0-based)
   index_style = TNLP::C_STYLE;
@@ -150,6 +154,54 @@ bool BH_nlp::eval_jac_g(Ipopt::Index n, const Number* x, bool new_x,
 
   }
 
+  return true;
+}
+
+bool BH_nlp::eval_h(Ipopt::Index n, const Number* x, bool new_x,
+                    Number obj_factor, Ipopt::Index m, const Number* lambda,
+                    bool new_lambda, Ipopt::Index nele_hess, Ipopt::Index* iRow,
+                    Ipopt::Index* jCol, Number* values)
+{
+  if (values == NULL)
+  {
+    // return the structure. This is a symmetric matrix, fill the lower left
+    // triangle only.
+    // the Hessian for this problem is actually dense
+    Ipopt::Index idx = 0;
+    for (Ipopt::Index row = 0; row < n; row++)
+    {
+      for (Ipopt::Index col = 0; col <= row; col++)
+      {
+        iRow[idx] = row;
+        jCol[idx] = col;
+        idx++;
+      }
+    }
+
+    assert(idx == nele_hess);
+  }
+  else
+  {
+    // return the values. This is a symmetric matrix, fill the lower left
+    // triangle only
+    // fill the objective portion
+
+    std::vector<double> control(x, x + n);
+    auto hess = optControlProb.getHessian(control);
+
+    Ipopt::Index idx = 0;
+    for (Ipopt::Index row = 0; row < n; row++)
+    {
+      for (Ipopt::Index col = 0; col <= row; col++)
+      {
+        values[idx] = obj_factor * hess[row][col];
+        idx++;
+      }
+    }
+
+    // constraint Hessian is zero
+  }
+  
   return true;
 }
 

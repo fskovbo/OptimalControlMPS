@@ -26,10 +26,10 @@ struct SequencingTest : testing::Test
         int Npart       = 3;
         int locDim      = 3;
 
-        double J        = 1.0;
+        double J        = 2.0;
         double cstart   = 2.0;
         double cend     = 12.0;
-        double T        = 0.15;
+        double T        = 0.5;
         double tstep    = 1e-2;
         N               = T/tstep + 1;
 
@@ -42,7 +42,7 @@ struct SequencingTest : testing::Test
 
         srand((unsigned)time(NULL));
         
-        init_control    = randseed(2,10,N);
+        init_control    = randseed(5,15,N);
         init_cost       = OC_GRAPE->getCost(init_control,true);
         init_grad       = OC_GRAPE->getAnalyticGradient(init_control,true);
         init_Hess       = OC_GRAPE->getHessian(init_control,true);
@@ -107,7 +107,7 @@ struct SequencingTest : testing::Test
         {
             for(size_t j = 0; j < hess1.front().size(); j++)
             {
-                identical = fabs(hess1[i][j]-hess2[i][j]) < 1e-10;
+                identical = fabs(hess1[i][j]-hess2[i][j]) < std::min(fabs(hess1[i][j])*1e-5,1e-11);
             }
             
         }
@@ -230,7 +230,7 @@ TEST_F(SequencingTest, testNewControl_GradGrad)
 
 TEST_F(SequencingTest, testNewControl_HessHess)
 {
-    auto new_control  = randseed(2,20,N);    
+    auto new_control  = randseed(1,4,N);    
     auto same_hessF   = OC_GRAPE->getHessian(new_control,false);
     auto same_hessT   = OC_GRAPE->getHessian(new_control,true);
 

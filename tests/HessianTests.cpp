@@ -224,7 +224,7 @@ TEST_F(HessianTest, testGROUP)
     {
         for(size_t j = 0; j < M; j++)
         {
-            EXPECT_NEAR(numHessian[i][j], analyticHessian[i][j], fabs(numHessian[i][j])*5e-2); 
+            EXPECT_NEAR(numHessian[i][j], analyticHessian[i][j], fabs(numHessian[i][j])*1e-1); 
         }
     }
     

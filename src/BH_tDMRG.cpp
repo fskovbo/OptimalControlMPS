@@ -66,13 +66,14 @@ double BH_tDMRG::getTstep() const
 }
 
 
-void BH_tDMRG::initUGates(const double Ufrom, const double Uto)
+void BH_tDMRG::initUGates(UGatePair& UGates, const double Ufrom, const double Uto) const
 {
-  UGates1.clear();
-  UGates2.clear();
+  UGates.first.reserve(sites.N());
+  UGates.second.reserve(sites.N());
 
   // U-Gates are diagonal, whereby H_U can be exponentiated directly
-  for (int k = 1; k <= sites.N(); ++k) {
+  for (int k = 1; k <= sites.N(); ++k)
+  {
     auto s    = sites.si(k);
     auto sP   = prime(s);
     int HD    = s.nblock();
@@ -80,31 +81,37 @@ void BH_tDMRG::initUGates(const double Ufrom, const double Uto)
     IQTensor T1(dag(s),sP);
     auto T2 = T1;
 
-    for (size_t i = 0; i < HD; i++) {
+    for (size_t i = 0; i < HD; i++)
+    {
       T1.set(s(i+1),sP(i+1), std::exp( -0.25*Ufrom*tstep*Cplx_i*i*(i-1) ) );
       T2.set(s(i+1),sP(i+1), std::exp( -0.25*Uto*tstep*Cplx_i*i*(i-1) ) );
     }
 
-    UGates1.push_back(T1);
-    UGates2.push_back(T2);
+    UGates.first.push_back(T1);
+    UGates.second.push_back(T2);
   }
 }
 
 
-void BH_tDMRG::step(IQMPS& psi, const double from, const double to, const bool propagateForward)
+void BH_tDMRG::step(IQMPS& psi, const double from, const double to, const bool propagateForward) const
 {
+  auto UGates = UGatePair();
+
   if (propagateForward) {
-    initUGates(from,to);
-    doStep(psi, JGates_tforwards);
+    initUGates(UGates,from,to);
+    doStep(psi, UGates, JGates_tforwards);
   }
   else {
-    initUGates(-from,-to);
-    doStep(psi, JGates_tbackwards);
+    initUGates(UGates,-from,-to);
+    doStep(psi, UGates, JGates_tbackwards);
   }
 }
 
-void BH_tDMRG::doStep(IQMPS& psi, const GateList& JGates)
+void BH_tDMRG::doStep(IQMPS& psi, const UGatePair& UGates, const GateList& JGates) const
 {
+  auto& UGates1 = UGates.first;
+  auto& UGates2 = UGates.second;
+
   // if N odd: "lonely" UGate at end must be applied first
   if (sites.N() % 2 != 0) { // N is odd
     psi.Aref(sites.N()) *= UGates1.back();
@@ -193,7 +200,8 @@ Args BH_tDMRG::getArgs() const{
 }
 
 
-IQMPO BH_tDMRG::propagatorDeriv(const double& control_n)
+IQMPO BH_tDMRG::propagatorDeriv(const double& control_n) const
 {
+  
   return propDeriv;
 }

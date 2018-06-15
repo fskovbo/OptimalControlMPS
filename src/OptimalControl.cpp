@@ -1,6 +1,9 @@
 #include "OptimalControl.hpp"
 #include "BH_tDMRG.hpp"
 
+#include <thread>
+#include <mutex>
+
 template<class TimeStepper>
 OptimalControl<TimeStepper>::
 OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, size_t N, double gamma, bool BFGS)
@@ -184,6 +187,28 @@ stdvec OptimalControl<TimeStepper>::calcFidelityGrad(const stdvec& control, cons
 }
 
 template<class TimeStepper>
+void OptimalControl<TimeStepper>::calcHessianRow(size_t rowIndex, const stdvec& control, const std::vector<IQMPS>& xiHlist, Cplx overlapFactor, rowmat& Hessian)
+{
+  auto psiH = exactApplyMPO(timeStepper.propagatorDeriv(control[rowIndex]),psi_t[rowIndex],timeStepper.getArgs());
+  auto normiH = norm(psiH);
+
+  // Calculate diagonal term
+  double val1 = (overlapFactor*overlapC(xiHlist[rowIndex],psiH)).real();
+  double val2 = -( divT[rowIndex] * conj(divT[rowIndex]) ).real();
+  Hessian[rowIndex][rowIndex] += tstep*tstep*(val1+val2);
+
+  // Off diagonal terms
+  for(size_t j = rowIndex+1; j < N; ++j)
+  {
+    timeStepper.step(psiH,control[j-1],control[j],true);
+    double val1 = (overlapFactor*overlapC(xiHlist[j],psiH)*normiH).real();
+    double val2 = -( divT[rowIndex] * conj(divT[j]) ).real();
+    Hessian[rowIndex][j] += tstep*tstep*(val1+val2);
+    Hessian[j][rowIndex] += tstep*tstep*(val1+val2); // dont calculate edges
+  }
+}
+
+template<class TimeStepper>
 rowmat OptimalControl<TimeStepper>::calcHessian(const stdvec& control, const bool new_control)
 {
   if (new_control)
@@ -207,26 +232,37 @@ rowmat OptimalControl<TimeStepper>::calcHessian(const stdvec& control, const boo
     xiHlist.push_back( exactApplyMPO(timeStepper.propagatorDeriv(control[i]),xi_t[i],timeStepper.getArgs()) );
   }
 
-  for (size_t i = 0; i < N; ++i)
+  auto threadCount = 8;
+  size_t nextHessianValueIndex = 0;
+  std::vector<std::thread> hessianThreads;
+  std::mutex syncMutex;
+  hessianThreads.reserve(threadCount); 
+
+  auto threadMainCode = [&syncMutex, &nextHessianValueIndex, &control, &xiHlist, overlapFactor, &Hessian, this]()
   {
-    auto psiH = exactApplyMPO(timeStepper.propagatorDeriv(control[i]),psi_t[i],timeStepper.getArgs()); // Consider the norm, maybe a problem?
-    auto normiH = norm(psiH);
-
-    // Calculate diagonal term
-    double val1 = (overlapFactor*overlapC(xiHlist[i],psiH)).real();
-    double val2 = -( divT[i] * conj(divT[i]) ).real();
-    Hessian[i][i] += tstep*tstep*(val1+val2);
-
-    // Off diagonal terms
-    for(size_t j = i+1; j < N; ++j)
+    while(nextHessianValueIndex < N)
     {
-      timeStepper.step(psiH,control[j-1],control[j],true);
-      double val1 = (overlapFactor*overlapC(xiHlist[j],psiH)*normiH).real();
-      double val2 = -( divT[i] * conj(divT[j]) ).real();
-      Hessian[i][j] += tstep*tstep*(val1+val2);
-      Hessian[j][i] += tstep*tstep*(val1+val2); // dont calculate edges
+      size_t currentIndex;
+      syncMutex.lock();
+      currentIndex = nextHessianValueIndex;
+      nextHessianValueIndex++;
+      syncMutex.unlock();
+      if (currentIndex < N)
+      {
+        calcHessianRow(currentIndex, control, xiHlist, overlapFactor, Hessian);
+      }
     }
+  };
+
+  for (size_t i = 0; i < threadCount; ++i)
+  {
+    hessianThreads.push_back(std::thread(threadMainCode));
   }
+  for (size_t i = 0; i < threadCount; ++i)
+  {
+    hessianThreads[i].join();
+  }
+
   return Hessian;
 }
 
@@ -281,8 +317,10 @@ template<class TimeStepper>
 void OptimalControl<TimeStepper>::calcPsiXiDivT(const stdvec& control)
 {
   // should be parallized
-  calcPsi(control);
-  calcXi(control);
+  std::thread psiThread(std::bind(&OptimalControl<TimeStepper>::calcPsi, this, control));
+  std::thread xiThread(std::bind(&OptimalControl<TimeStepper>::calcXi, this, control));
+  psiThread.join();
+  xiThread.join();
   calcDivT(control);
 }
 

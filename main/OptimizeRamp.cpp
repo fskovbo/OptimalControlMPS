@@ -91,7 +91,7 @@ int main(int argc, char* argv[]){
   //       suitable for your optimization problem.
   app->Options()->SetNumericValue("tol", optTol);
   app->Options()->SetStringValue("mu_strategy", "adaptive");
-  app->Options()->SetStringValue("hessian_approximation", "limited-memory");
+  // app->Options()->SetStringValue("hessian_approximation", "limited-memory");
   // app->Options()->SetStringValue("output_file", "logfile_BH.txt");
   // app->Options()->SetStringValue("derivative_test", "first-order");
 
