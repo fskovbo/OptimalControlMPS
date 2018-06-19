@@ -20,7 +20,7 @@ private:
   TimeStepper timeStepper;
   ControlBasis basis;
   double gamma, tstep;
-  size_t N, M;
+  size_t N, M, threadCount;
   IQMPS psi_target, psi_init;
 
   std::vector<IQMPS> psi_t;
@@ -55,6 +55,8 @@ public:
   stdvec getControl( const stdvec& control );
   stdvec getTimeAxis( ) const;
   void setGamma( double newgamma );
+  void setThreadCount(const size_t newThreadCount);
+  void setGRAPE(const bool useGRAPE);
  
   void propagatePsi(const stdvec& control);
   double getCost(const stdvec& control, const bool new_control = true);

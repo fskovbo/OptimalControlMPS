@@ -13,6 +13,7 @@ OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, siz
   basis         = ControlBasis();
   GRAPE         = true;
   calculatedXi  = false;
+  threadCount   = 2;
   M             = 0;
 }
 
@@ -26,7 +27,19 @@ OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, Con
   GRAPE         = false;
   calculatedXi  = false;
   N             = basis.getN();
-  M             = basis.getM();  
+  M             = basis.getM();
+  threadCount   = 2;
+}
+
+template<class TimeStepper>
+void OptimalControl<TimeStepper>::setThreadCount(const size_t newThreadCount){
+    if(newThreadCount < 2) throw std::invalid_argument("Mininum threadCount is 2.");
+    threadCount = newThreadCount;
+}
+template<class TimeStepper>
+void OptimalControl<TimeStepper>::setGRAPE(const bool useGRAPE){
+    GRAPE = useGRAPE;
+    calculatedXi = false;
 }
 
 
@@ -75,11 +88,13 @@ rowmat OptimalControl<TimeStepper>::calcRegularizationHessian(const stdvec& cont
     Hessian[i][i+1] = -gamma/tstep;
     Hessian[i][i]   = 2.0*gamma/tstep;
   }
+  Hessian[1][0]=0;
+  Hessian[N-2][N-1]=0;
 
-  Hessian[0][0]     = 2.0*gamma/tstep;
-  Hessian[0][1]     = -gamma/tstep;
-  Hessian[N-1][N-1] = 2.0*gamma/tstep;
-  Hessian[N-1][N-2] = -gamma/tstep;
+  //Hessian[0][0]     = 2.0*gamma/tstep;
+  //Hessian[0][1]     = -gamma/tstep;
+  //Hessian[N-1][N-1] = 2.0*gamma/tstep;
+  //Hessian[N-1][N-2] = -gamma/tstep;
   
   return Hessian;
 }
@@ -198,7 +213,7 @@ void OptimalControl<TimeStepper>::calcHessianRow(size_t rowIndex, const stdvec& 
   Hessian[rowIndex][rowIndex] += tstep*tstep*(val1+val2);
 
   // Off diagonal terms
-  for(size_t j = rowIndex+1; j < N; ++j)
+  for(size_t j = rowIndex+1; j < N - 1; ++j)
   {
     timeStepper.step(psiH,control[j-1],control[j],true);
     double val1 = (overlapFactor*overlapC(xiHlist[j],psiH)*normiH).real();
@@ -232,22 +247,22 @@ rowmat OptimalControl<TimeStepper>::calcHessian(const stdvec& control, const boo
     xiHlist.push_back( exactApplyMPO(timeStepper.propagatorDeriv(control[i]),xi_t[i],timeStepper.getArgs()) );
   }
 
-  auto threadCount = 8;
-  size_t nextHessianValueIndex = 0;
+  //size_t threadCount = 8;
+  size_t nextHessianValueIndex = 1; // Do not calculate the first row, which is on the Hessian Boundary.
   std::vector<std::thread> hessianThreads;
   std::mutex syncMutex;
   hessianThreads.reserve(threadCount); 
 
   auto threadMainCode = [&syncMutex, &nextHessianValueIndex, &control, &xiHlist, overlapFactor, &Hessian, this]()
   {
-    while(nextHessianValueIndex < N)
+    while(nextHessianValueIndex < N - 1)
     {
       size_t currentIndex;
       syncMutex.lock();
       currentIndex = nextHessianValueIndex;
       nextHessianValueIndex++;
       syncMutex.unlock();
-      if (currentIndex < N)
+      if (currentIndex < N - 1) // Check that another thread did not just took the last job.
       {
         calcHessianRow(currentIndex, control, xiHlist, overlapFactor, Hessian);
       }

@@ -244,7 +244,7 @@ void BH_nlp::finalize_solution(SolverReturn status,
   std::ofstream myfile (filename);
   if (myfile.is_open())
   {
-    for (int i = 0; i < m; i++) {
+    for (int i = 0; i < times.size(); i++) {
       myfile << times.at(i) << "\t";
       myfile << initialControl.at(i) << "\t";
       myfile << initialFidelities.at(i) << "\t";
@@ -252,6 +252,38 @@ void BH_nlp::finalize_solution(SolverReturn status,
       myfile << finalFidelities.at(i) << "\n";
     }
     myfile.close();
+  }
+  else std::cout << "Unable to open file\n";
+  // Calculating Hessians
+  auto GROUPHessian = optControlProb.getHessian(finalCoeffs);
+  optControlProb.setGRAPE(true);
+  auto GRAPEHessian = optControlProb.getHessian(finalControl);
+
+  std::string filenameGROUP = "GROUPHessian.txt";
+  std::ofstream myfileGROUP (filenameGROUP);
+  if (myfileGROUP.is_open())
+  {
+      for(auto& Hrow : GROUPHessian){
+          for(auto& Hval : Hrow){
+              myfileGROUP << Hval << "\t";
+          }
+          myfileGROUP << "\n";
+      }
+       myfileGROUP.close();
+  }
+  else std::cout << "Unable to open file\n";
+
+  std::string filenameGRAPE = "GRAPEHessian.txt";
+  std::ofstream myfileGRAPE (filenameGRAPE);
+  if (myfileGRAPE.is_open())
+  {
+      for(auto& Hrow : GRAPEHessian){
+          for(auto& Hval : Hrow){
+              myfileGRAPE << Hval << "\t";
+          }
+          myfileGRAPE << "\n";
+      }
+      myfileGRAPE.close();
   }
   else std::cout << "Unable to open file\n";
 }
