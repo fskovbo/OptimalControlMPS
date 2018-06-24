@@ -88,31 +88,26 @@ struct SequencingTest : testing::Test
     }
 
     bool compareGradients(const std::vector<double>& grad1, const std::vector<double>& grad2)
-    {
-        bool identical = true;
-        
+    {        
         for(size_t i = 0; i < grad1.size(); i++)
         {
-            identical = fabs(grad1[i]-grad2[i]) < 1e-10;
+            if (fabs(grad1[i]-grad2[i]) > 1e-10) return false;
         }
         
-        return identical;
+        return true;
     }
 
     bool compareHessians(const std::vector< std::vector<double> >& hess1, const std::vector< std::vector<double> >& hess2)
     {
-        bool identical = true;
-        
         for(size_t i = 0; i < hess1.size(); i++)
         {
             for(size_t j = 0; j < hess1.front().size(); j++)
             {
-                identical = fabs(hess1[i][j]-hess2[i][j]) < std::min(fabs(hess1[i][j])*1e-5,1e-11);
+                if (fabs(hess1[i][j]-hess2[i][j]) > 1e-10) return false;
             }
-            
         }
         
-        return identical;
+        return true;
     }
     
 };
@@ -186,7 +181,7 @@ TEST_F(SequencingTest, testSameControl_HessCostGrad)
 
 TEST_F(SequencingTest, testNewControl_Cost)
 {
-    auto new_control = linseed(5,6,N);
+    auto new_control = randseed(2,20,N);
     auto new_cost    = OC_GRAPE->getCost(new_control,true);
     
     ASSERT_FALSE( compareCosts(init_cost,new_cost) );
@@ -194,7 +189,7 @@ TEST_F(SequencingTest, testNewControl_Cost)
 
 TEST_F(SequencingTest, testNewControl_Grad)
 {
-    auto new_control = linseed(5,6,N);
+    auto new_control = randseed(2,20,N);
     auto new_grad    = OC_GRAPE->getAnalyticGradient(new_control,true);
     
     ASSERT_FALSE( compareGradients(init_grad,new_grad) );
@@ -202,7 +197,7 @@ TEST_F(SequencingTest, testNewControl_Grad)
 
 TEST_F(SequencingTest, testNewControl_Hess)
 {
-    auto new_control = linseed(5,6,N);
+    auto new_control = randseed(2,20,N);
     auto new_Hess    = OC_GRAPE->getHessian(new_control,true);
     
     ASSERT_FALSE( compareHessians(init_Hess,new_Hess) );

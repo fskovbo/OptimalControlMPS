@@ -275,6 +275,77 @@ TEST_F(ChoppedSineTest, testControlJacobian)
     }
 } 
 
+
+TEST_F(ChoppedSineTest, testConvertHessian)
+{
+    // test Hessu = zeros
+    std::vector< std::vector<double> > Hessu1(basis->getN(), std::vector<double>(basis->getN(), 0));
+    auto Hessc1 = basis->convertHessian(Hessu1);
+
+    for(size_t i = 0; i < basis->getM(); i++)
+    {
+        for(size_t j = 0; j < basis->getM(); j++)
+        {
+            EXPECT_NEAR(Hessc1[i][j] , 0 , 1e-10);
+        }
+    }
+
+    // test Hessu = ones
+    std::vector< std::vector<double> > Hessu2(basis->getN(), std::vector<double>(basis->getN(), 1));
+    auto Hessc2 = basis->convertHessian(Hessu2);
+
+    std::vector< std::vector<double> > testHess2;
+    
+    testHess2.emplace_back(std::initializer_list<double>{  39.8635  , -0.0000 ,  12.3914  ,  0.0000  ,  6.3138	});
+    testHess2.emplace_back(std::initializer_list<double>{  -0.0000  , -0.0000 ,  -0.0000  ,  0.0000  ,  0.0000	});
+    testHess2.emplace_back(std::initializer_list<double>{ 12.3914  , -0.0000  ,  3.8518  ,  0.0000   , 1.9626	});
+    testHess2.emplace_back(std::initializer_list<double>{ -0.0000  ,  0.0000 ,  -0.0000     ,    0   , 0.0000	});
+    testHess2.emplace_back(std::initializer_list<double>{ 6.3138  , -0.0000  ,  1.9626 ,   0.0000  ,  1.0000	});
+    
+
+    for(size_t i = 0; i < basis->getM(); i++)
+    {
+        for(size_t j = 0; j < basis->getM(); j++)
+        {
+            EXPECT_NEAR(Hessc2[i][j] , testHess2[i][j]  , 1e-4);
+        }
+    }
+
+    // test Hessu = [1 , 2, 3 ...]
+    std::vector< std::vector<double> > Hessu3(basis->getN(), std::vector<double>(basis->getN(), 1));
+    double idx = 0.0;
+    
+    for(size_t i = 0; i < basis->getN(); i++)
+    {
+        for(size_t j = i; j < basis->getN(); j++)
+        {
+            Hessu3[i][j] = idx;
+            Hessu3[j][i] = idx;
+            idx += 0.01;
+        }   
+    }
+
+    auto Hessc3 = basis->convertHessian(Hessu3);
+
+    std::vector< std::vector<double> > testHess3;
+    testHess3.emplace_back(std::initializer_list<double>{  14.8420 ,  -3.5725 ,   3.3413 ,  -1.8170 ,   1.6800	});
+    testHess3.emplace_back(std::initializer_list<double>{  -3.5725 ,   1.6547 ,  -0.8321 ,   0.4766 ,  -0.4938  });
+    testHess3.emplace_back(std::initializer_list<double>{  3.3413  , -0.8321  ,  1.1382  , -0.3595  ,  0.4339	});
+    testHess3.emplace_back(std::initializer_list<double>{  -1.8170 ,   0.4766 ,  -0.3595 ,   0.3759 ,  -0.1662	});
+    testHess3.emplace_back(std::initializer_list<double>{  1.6800  , -0.4938  ,  0.4339  , -0.1662  ,  0.3300   });
+    
+
+    for(size_t i = 0; i < basis->getM(); i++)
+    {
+        for(size_t j = 0; j < basis->getM(); j++)
+        {
+            EXPECT_NEAR(Hessc3[i][j] , testHess3[i][j]  , 1e-4);
+        }
+    }
+
+} 
+
+
 int main(int argc, char **argv)
 {
     testing::InitGoogleTest(&argc, argv);
