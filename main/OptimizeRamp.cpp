@@ -46,6 +46,7 @@ int main(int argc, char* argv[]){
   size_t threadCount = input.getInt("threadCount",2);
   int maxIter        = input.getInt("maxIter",200);
   double maxCPUHours = input.getReal("maxCPUHours",24);
+  double ObjScaling  = input.getReal("ObjScaling",1);
   double maxCPUTime = maxCPUHours*60*60;
 
   
@@ -68,6 +69,7 @@ int main(int argc, char* argv[]){
   std::cout << "Gamma (regularisation) ......... " << gamma << "\n";
   std::cout << "Maximum bond dimension (MPS).... " << maxBondDim << "\n";
   std::cout << "Truncation threshold (MPS) ..... " << threshold << "\n";
+  std::cout << "Objective Scaling (IPOPT) ...... " << ObjScaling << "\n";
   std::cout << "Optimization tolerance (IPOPT).. " << optTol << "\n";
   std::cout << "MaxITER (IPOPT) ................ " << maxIter << "\n";
   std::cout << "MaxCPUTime (IPOPT) ............. " << maxCPUTime << "\n";
@@ -103,6 +105,7 @@ int main(int argc, char* argv[]){
   app->Options()->SetStringValue("jac_d_constant","yes");
   app->Options()->SetIntegerValue("max_iter",maxIter);
   app->Options()->SetNumericValue("max_cpu_time",maxCPUTime);
+  app->Options()->SetNumericValue("obj_scaling_factor",ObjScaling);
   // app->Options()->SetStringValue("hessian_approximation", "limited-memory");
   // app->Options()->SetStringValue("output_file", "logfile_BH.txt");
   // app->Options()->SetStringValue("derivative_test", "first-order");
