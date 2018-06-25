@@ -31,15 +31,28 @@ OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, Con
   threadCount   = 2;
 }
 
+
 template<class TimeStepper>
-void OptimalControl<TimeStepper>::setThreadCount(const size_t newThreadCount){
-    if(newThreadCount < 2) throw std::invalid_argument("Mininum threadCount is 2.");
-    threadCount = newThreadCount;
+void OptimalControl<TimeStepper>::setThreadCount(const size_t newThreadCount)
+{
+  if(newThreadCount < 2) throw std::invalid_argument("Mininum threadCount is 2.");
+  threadCount = newThreadCount;
 }
+
+
 template<class TimeStepper>
-void OptimalControl<TimeStepper>::setGRAPE(const bool useGRAPE){
-    GRAPE = useGRAPE;
-    calculatedXi = false;
+void OptimalControl<TimeStepper>::setGRAPE(const bool useGRAPE)
+{
+  GRAPE = useGRAPE;
+  calculatedXi = false;
+}
+
+
+template<class TimeStepper>
+void OptimalControl<TimeStepper>::setBFGS(const bool useBFGS)
+{
+  BFGS = useBFGS;
+  calculatedXi = false;
 }
 
 

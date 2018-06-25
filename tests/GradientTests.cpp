@@ -159,8 +159,76 @@ TEST_F(gradientTest, testGRAPE)
 }
 
 
+TEST_F(gradientTest, testGRAPE_BFGS)
+{
+    // toggle BFGS-mode ON
+    OC_GRAPE->setBFGS(true);
+
+    // Test GRAPE fidelity gradient
+    auto control    = randseed(2,10,N);
+    auto numeric    = getNumericGrad(control,*OC_GRAPE);
+    auto analytic   = OC_GRAPE->getAnalyticGradient(control);
+
+    ASSERT_EQ( analytic.size() , numeric.size() ); 
+    
+    for(size_t i = 1; i < analytic.size()-1; i++)
+    {
+        // expected to vary by max 0.1%
+        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*1e-3));
+    }
+
+    // Test GRAPE regularization gradient 
+    OC_GRAPE->setGamma(1);
+
+    analytic   = OC_GRAPE->getAnalyticGradient(control,false);
+    numeric    = getNumericGrad(control,*OC_GRAPE);
+
+    ASSERT_EQ( analytic.size() , numeric.size() ); 
+    
+    for(size_t i = 1; i < analytic.size()-1; i++)
+    {
+        // expected to vary by max 0.001%
+        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*1e-5));
+    }
+}
+
+
 TEST_F(gradientTest, testGROUP)
 {
+    // Test GROUP fidelity gradient
+    auto control    = randseed(-4,4,M);
+    auto numeric    = getNumericGrad(control,*OC_GROUP);
+    auto analytic   = OC_GROUP->getAnalyticGradient(control);
+
+    ASSERT_EQ( analytic.size() , numeric.size() ); 
+    
+    for(size_t i = 1; i < analytic.size()-1; i++)
+    {
+        // expected to vary by max 0.1%
+        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*1e-3));
+    }
+
+    // Test GROUP regularization gradient
+    OC_GROUP->setGamma(1);
+
+    analytic   = OC_GROUP->getAnalyticGradient(control,false);
+    numeric    = getNumericGrad(control,*OC_GROUP);
+
+    ASSERT_EQ( analytic.size() , numeric.size() ); 
+    
+    for(size_t i = 1; i < analytic.size()-1; i++)
+    {
+        // expected to vary by max 0.001%
+        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*1e-5));
+    }
+}
+
+
+TEST_F(gradientTest, testGROUP_BFGS)
+{
+    // toggle BFGS-mode ON
+    OC_GROUP->setBFGS(true);
+
     // Test GROUP fidelity gradient
     auto control    = randseed(-4,4,M);
     auto numeric    = getNumericGrad(control,*OC_GROUP);

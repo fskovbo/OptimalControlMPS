@@ -122,6 +122,15 @@ TEST_F(SequencingTest, testSameControl_CostGradHess)
     ASSERT_TRUE( compareCosts(init_cost,same_cost) );
     ASSERT_TRUE( compareGradients(init_grad,same_grad) );
     ASSERT_TRUE( compareHessians(init_Hess,same_Hess) );
+
+    // Toggle BFGS-mode ON
+    OC_GRAPE->setBFGS(true);
+
+    same_cost  = OC_GRAPE->getCost(init_control,true);
+    same_grad  = OC_GRAPE->getAnalyticGradient(init_control,false);
+
+    ASSERT_TRUE( compareCosts(init_cost,same_cost) );
+    ASSERT_TRUE( compareGradients(init_grad,same_grad) );
 }
 
 TEST_F(SequencingTest, testSameControl_GradCostHess)
@@ -133,6 +142,15 @@ TEST_F(SequencingTest, testSameControl_GradCostHess)
     ASSERT_TRUE( compareCosts(init_cost,same_cost) );
     ASSERT_TRUE( compareGradients(init_grad,same_grad) );
     ASSERT_TRUE( compareHessians(init_Hess,same_Hess) );
+
+    // Toggle BFGS-mode ON
+    OC_GRAPE->setBFGS(true);
+
+    same_grad  = OC_GRAPE->getAnalyticGradient(init_control,true);
+    same_cost  = OC_GRAPE->getCost(init_control,false);
+
+    ASSERT_TRUE( compareCosts(init_cost,same_cost) );
+    ASSERT_TRUE( compareGradients(init_grad,same_grad) );
 }
 
 TEST_F(SequencingTest, testSameControl_CostHessGrad)
@@ -185,6 +203,13 @@ TEST_F(SequencingTest, testNewControl_Cost)
     auto new_cost    = OC_GRAPE->getCost(new_control,true);
     
     ASSERT_FALSE( compareCosts(init_cost,new_cost) );
+
+    // Toggle BFGS-mode ON
+    OC_GRAPE->setBFGS(true);
+
+    auto new_cost2   = OC_GRAPE->getCost(new_control,true);
+    ASSERT_FALSE( compareCosts(init_cost,new_cost2) );
+    ASSERT_TRUE( compareCosts(new_cost,new_cost2) );
 }
 
 TEST_F(SequencingTest, testNewControl_Grad)
@@ -193,6 +218,13 @@ TEST_F(SequencingTest, testNewControl_Grad)
     auto new_grad    = OC_GRAPE->getAnalyticGradient(new_control,true);
     
     ASSERT_FALSE( compareGradients(init_grad,new_grad) );
+
+    // Toggle BFGS-mode ON
+    OC_GRAPE->setBFGS(true);
+
+    auto new_grad2   = OC_GRAPE->getAnalyticGradient(new_control,true);
+    ASSERT_FALSE( compareGradients(init_grad,new_grad2) );
+    ASSERT_TRUE( compareGradients(new_grad,new_grad2) );
 }
 
 TEST_F(SequencingTest, testNewControl_Hess)
