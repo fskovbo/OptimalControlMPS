@@ -99,6 +99,11 @@ rowmat OptimalControl<TimeStepper>::calcRegularizationHessian(const stdvec& cont
   return Hessian;
 }
 
+template<class TimeStepper>
+bool OptimalControl<TimeStepper>::useBFGS() const
+{
+    return BFGS;
+}
 
 template<class TimeStepper>
 std::vector<IQMPS> OptimalControl<TimeStepper>::getPsit() const

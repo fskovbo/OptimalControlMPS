@@ -309,7 +309,13 @@ bool BH_nlp::intermediate_callback(AlgorithmMode mode,
       outfile << iter << "\t";
       outfile << obj_value << "\t";
       outfile << times.back() << "\t";
-      outfile << 2 + ls_trials << "\n";
+      // Number of propogations
+      std::size_t nSteps = optControlProb.getN();
+      std::size_t Nprop = nSteps*(2 + ls_trials);
+      if (!optControlProb.useBFGS()){
+          Nprop += nSteps*(nSteps-1)/2;
+      }
+      outfile << Nprop << "\n";
 
     }
     else std::cout << "Unable to open file\n";

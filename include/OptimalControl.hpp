@@ -57,6 +57,7 @@ public:
   void setGamma( double newgamma );
   void setThreadCount(const size_t newThreadCount);
   void setGRAPE(const bool useGRAPE);
+  bool useBFGS() const;
  
   void propagatePsi(const stdvec& control);
   double getCost(const stdvec& control, const bool new_control = true);
