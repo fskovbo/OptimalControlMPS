@@ -41,7 +41,8 @@ private:
   rowmat  calcRegularizationHessian(const stdvec& control) const;
   stdvec  calcFidelityGrad(const stdvec& control, const bool new__tcontrol = true);
   stdvec  calcAnalyticGradient(const stdvec& control, const bool new_control = true);
-  rowmat  calcHessian(const stdvec& control, const bool new_control = true);
+  rowmat  calcHessian_parallel(const stdvec& control, const bool new_control = true);
+  rowmat  calcHessian_sequencial(const stdvec& control, const bool new_control = true);
   stdvec  calcFidelityForAllT(const stdvec& control, const bool new_control = true);
   void calcHessianRow(size_t rowIndex, const stdvec& control, const std::vector<IQMPS>& xiHlist, Cplx overlapFactor, rowmat& Hessian);
 

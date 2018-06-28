@@ -15,11 +15,12 @@ using UGatePair = std::pair<std::vector<IQTensor>,std::vector<IQTensor> >;
 
 class BH_tDMRG {
 private:
+  int d;
   double tstep, J;
 
   GateList JGates_tforwards;
   GateList JGates_tbackwards;
-
+  
   SiteSet sites;
   Args args;
 

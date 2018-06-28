@@ -13,8 +13,12 @@ OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, siz
   basis         = ControlBasis();
   GRAPE         = true;
   calculatedXi  = false;
-  threadCount   = 2;
   M             = 0;
+  threadCount   = 1;
+
+  psi_t.resize(N);
+  xi_t.resize(N);
+
 }
 
 
@@ -28,14 +32,17 @@ OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, Con
   calculatedXi  = false;
   N             = basis.getN();
   M             = basis.getM();
-  threadCount   = 2;
+  threadCount   = 1;
+
+  psi_t.resize(N);
+  xi_t.resize(N);
 }
 
 
 template<class TimeStepper>
 void OptimalControl<TimeStepper>::setThreadCount(const size_t newThreadCount)
 {
-  if(newThreadCount < 2) throw std::invalid_argument("Mininum threadCount is 2.");
+  if(newThreadCount < 1) throw std::invalid_argument("Mininum threadCount is 1.");
   threadCount = newThreadCount;
 }
 
@@ -220,7 +227,9 @@ stdvec OptimalControl<TimeStepper>::calcFidelityGrad(const stdvec& control, cons
 }
 
 template<class TimeStepper>
-void OptimalControl<TimeStepper>::calcHessianRow(size_t rowIndex, const stdvec& control, const std::vector<IQMPS>& xiHlist, Cplx overlapFactor, rowmat& Hessian)
+void OptimalControl<TimeStepper>::calcHessianRow( size_t rowIndex, const stdvec& control,
+                                                  const std::vector<IQMPS>& xiHlist, Cplx overlapFactor,
+                                                  rowmat& Hessian)
 {
   auto psiH = exactApplyMPO(timeStepper.propagatorDeriv(control[rowIndex]),psi_t[rowIndex],timeStepper.getArgs());
   auto normiH = norm(psiH);
@@ -242,7 +251,7 @@ void OptimalControl<TimeStepper>::calcHessianRow(size_t rowIndex, const stdvec& 
 }
 
 template<class TimeStepper>
-rowmat OptimalControl<TimeStepper>::calcHessian(const stdvec& control, const bool new_control)
+rowmat OptimalControl<TimeStepper>::calcHessian_parallel(const stdvec& control, const bool new_control)
 {
   if (new_control)
   {
@@ -299,17 +308,50 @@ rowmat OptimalControl<TimeStepper>::calcHessian(const stdvec& control, const boo
   return Hessian;
 }
 
+
+template<class TimeStepper>
+rowmat OptimalControl<TimeStepper>::calcHessian_sequencial(const stdvec& control, const bool new_control)
+{
+  if (new_control)
+  {
+    calculatedXi = false;
+    calcPsiXiDivT(control);
+  }
+  if (!calculatedXi)
+  {
+    calcXi(control);
+    calcDivT(control);
+  }
+
+  rowmat Hessian      = calcRegularizationHessian(control);
+  auto overlapFactor  = overlapC(psi_t.back(),psi_target);
+  std::vector<IQMPS> xiHlist;
+  xiHlist.reserve(N);
+  
+  for(size_t i = 0; i < N; i++)
+  {
+    xiHlist.push_back( exactApplyMPO(timeStepper.propagatorDeriv(control[i]),xi_t[i],timeStepper.getArgs()) );
+  }
+
+  for(size_t i = 1; i < N-1; i++) // dont calculate edges of Hessian as endpoints of control are fixed
+  {
+    calcHessianRow(i, control, xiHlist, overlapFactor, Hessian);
+  }
+  
+  return Hessian;
+}
+
+
 template<class TimeStepper>
 void OptimalControl<TimeStepper>::calcPsi(const stdvec& control)
 {
   const bool propagateForward = true;
   auto psi0 = psi_init;
-  psi_t.clear();
-  psi_t.push_back(psi0);
+  psi_t[0]  = psi0;
 
   for (size_t i = 0; i < N-1; i++) {
     timeStepper.step(psi0,control[i],control[i+1],propagateForward);
-    psi_t.push_back(psi0);
+    psi_t[i+1] = psi0;
   }
   calculatedXi = false;
 }
@@ -318,16 +360,15 @@ template<class TimeStepper>
 void OptimalControl<TimeStepper>::calcXi(const stdvec& control)
 {
   const bool propagateForward = false;
-  auto xiT = psi_target;
-  xi_t.clear();
-  xi_t.push_back(xiT);
+  auto xiT  = psi_target;
+  xi_t[N-1] = xiT;
 
   for (size_t i = N-1; i > 0; i--) {
     timeStepper.step(xiT,control[i],control[i-1],propagateForward);
-    xi_t.push_back(xiT);
+    xi_t[i-1] = xiT;
   }
 
-  std::reverse(xi_t.begin(),xi_t.end());
+  // std::reverse(xi_t.begin(),xi_t.end());
   calculatedXi = true;
 }
 
@@ -349,11 +390,19 @@ void OptimalControl<TimeStepper>::calcDivT(const stdvec& control)
 template<class TimeStepper>
 void OptimalControl<TimeStepper>::calcPsiXiDivT(const stdvec& control)
 {
-  // should be parallized
-  std::thread psiThread(std::bind(&OptimalControl<TimeStepper>::calcPsi, this, control));
-  std::thread xiThread(std::bind(&OptimalControl<TimeStepper>::calcXi, this, control));
-  psiThread.join();
-  xiThread.join();
+  if (threadCount > 1) // parallel computation of Psi and Xi
+  {
+    std::thread psiThread(std::bind(&OptimalControl<TimeStepper>::calcPsi, this, control));
+    std::thread xiThread(std::bind(&OptimalControl<TimeStepper>::calcXi, this, control));
+    psiThread.join();
+    xiThread.join();
+  }
+  else // sequencial computation of Psi and Xi
+  {
+    calcPsi(control);
+    calcXi(control);
+  }
+    
   calcDivT(control);
 }
 
@@ -448,14 +497,42 @@ stdvec OptimalControl<TimeStepper>::getAnalyticGradient(const stdvec& control, c
 template<class TimeStepper>
 rowmat OptimalControl<TimeStepper>::getHessian(const stdvec& control, const bool new_control)
 {
-  if (GRAPE) {
-    return calcHessian(control,new_control);
+  if (threadCount > 1) // parallel computation of Hessian
+  {
+    if (GRAPE)
+    {
+      return calcHessian_parallel(control,new_control);
+    }
+    else
+    {
+      return basis.convertHessian
+                      (
+                          calcHessian_parallel
+                          (
+                              basis.convertControl(control,new_control) ,
+                              new_control
+                          )
+                      );
+    }
   }
- else {
-   return basis.convertHessian(
-                     calcHessian(basis.convertControl(control,new_control),new_control)
-                               );
- }
+  else // sequencial computation of Hessian
+  {
+    if (GRAPE)
+    {
+      return calcHessian_sequencial(control,new_control);
+    }
+    else
+    {
+      return basis.convertHessian
+                      (
+                          calcHessian_sequencial
+                          (
+                              basis.convertControl(control,new_control) ,
+                              new_control
+                          )
+                      );
+    }
+  }
 }
 
 template<class TimeStepper>

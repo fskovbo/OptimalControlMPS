@@ -251,6 +251,24 @@ TEST_F(HessianTest, testGROUP)
 }
 
 
+TEST_F(HessianTest, testSequencialVsParallel)
+{
+    OC_GRAPE->setGamma(0);
+    auto control            = randseed(2,10,N);
+    auto analyticHessianSeq = OC_GRAPE->getHessian(control);
+    OC_GRAPE->setThreadCount(4);
+    auto analyticHessianPar = OC_GRAPE->getHessian(control);    
+    
+    for(size_t i = 1; i < N-1; i++)
+    {
+        for(size_t j = 1; j < N-1; j++)
+        {
+            EXPECT_NEAR(analyticHessianSeq[i][j], analyticHessianPar[i][j], 1e-11); 
+        }
+    }
+}
+
+
 int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

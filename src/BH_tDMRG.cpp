@@ -1,7 +1,7 @@
 #include "BH_tDMRG.hpp"
 
 BH_tDMRG::BH_tDMRG(const SiteSet& sites, const double J, const double tstep, const Args& args)
-  : J(J), sites(sites), args(args)
+  : J(J), sites(sites), args(args), d(sites.si(1).nblock())
 {
   // builds J-Gates as well, which remain constant
   setTstep(tstep);
@@ -67,24 +67,34 @@ double BH_tDMRG::getTstep() const
 
 
 void BH_tDMRG::initUGates(UGatePair& UGates, const double Ufrom, const double Uto) const
-{
+{ 
   UGates.first.reserve(sites.N());
   UGates.second.reserve(sites.N());
+
+  std::vector<Cplx> expFrom, expTo;
+  expFrom.reserve(d);
+  expTo.reserve(d);
+
+  for(size_t i = 0; i < d; i++)
+  {
+    expFrom.push_back( std::exp( -0.25*Ufrom*tstep*Cplx_i*i*(i-1) ) );
+    expTo.push_back( std::exp( -0.25*Uto*tstep*Cplx_i*i*(i-1) ) );
+  }
+  
 
   // U-Gates are diagonal, whereby H_U can be exponentiated directly
   for (int k = 1; k <= sites.N(); ++k)
   {
     auto s    = sites.si(k);
     auto sP   = prime(s);
-    int HD    = s.nblock();
 
     IQTensor T1(dag(s),sP);
     auto T2 = T1;
 
-    for (size_t i = 0; i < HD; i++)
+    for (size_t i = 0; i < d; i++)
     {
-      T1.set(s(i+1),sP(i+1), std::exp( -0.25*Ufrom*tstep*Cplx_i*i*(i-1) ) );
-      T2.set(s(i+1),sP(i+1), std::exp( -0.25*Uto*tstep*Cplx_i*i*(i-1) ) );
+      T1.set(s(i+1),sP(i+1), expFrom[i] );
+      T2.set(s(i+1),sP(i+1), expTo[i] );
     }
 
     UGates.first.push_back(T1);
@@ -95,14 +105,14 @@ void BH_tDMRG::initUGates(UGatePair& UGates, const double Ufrom, const double Ut
 
 void BH_tDMRG::step(IQMPS& psi, const double from, const double to, const bool propagateForward) const
 {
-  auto UGates = UGatePair();
+  UGatePair UGates;
 
   if (propagateForward) {
-    initUGates(UGates,from,to);
+    initUGates(UGates, from, to);
     doStep(psi, UGates, JGates_tforwards);
   }
   else {
-    initUGates(UGates,-from,-to);
+    initUGates(UGates, -from, -to);
     doStep(psi, UGates, JGates_tbackwards);
   }
 }

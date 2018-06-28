@@ -204,8 +204,8 @@ TEST_F(gradientTest, testGROUP)
     
     for(size_t i = 1; i < analytic.size()-1; i++)
     {
-        // expected to vary by max 0.1%
-        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*1e-3));
+        // expected to vary by max 0.2%
+        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*2e-3));
     }
 
     // Test GROUP regularization gradient
@@ -238,8 +238,8 @@ TEST_F(gradientTest, testGROUP_BFGS)
     
     for(size_t i = 1; i < analytic.size()-1; i++)
     {
-        // expected to vary by max 0.1%
-        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*1e-3));
+        // expected to vary by max 0.2%
+        EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*2e-3));
     }
 
     // Test GROUP regularization gradient
@@ -254,6 +254,33 @@ TEST_F(gradientTest, testGROUP_BFGS)
     {
         // expected to vary by max 0.001%
         EXPECT_NEAR(analytic.at(i) , numeric.at(i), fabs(numeric.at(i)*1e-5));
+    }
+}
+
+
+TEST_F(gradientTest, testSequencialVsParallel)
+{
+    OC_GRAPE->setBFGS(false); // parallel routine should not be available
+    OC_GRAPE->setGamma(0);
+    auto control        = randseed(2,10,N);
+    auto analyticSeq    = OC_GRAPE->getAnalyticGradient(control);
+    OC_GRAPE->setThreadCount(4);
+    auto analyticPar    = OC_GRAPE->getAnalyticGradient(control);
+
+    for(size_t i = 1; i < analyticSeq.size()-1; i++)
+    {
+        EXPECT_NEAR(analyticSeq.at(i) , analyticPar.at(i), 1e-11);
+    }
+
+    // Enable BFGS -> parallel computaions of Psi and Xi available
+    OC_GRAPE->setBFGS(true);
+    analyticPar    = OC_GRAPE->getAnalyticGradient(control);
+    OC_GRAPE->setThreadCount(1);
+    analyticSeq    = OC_GRAPE->getAnalyticGradient(control);
+
+    for(size_t i = 1; i < analyticPar.size()-1; i++)
+    {
+        EXPECT_NEAR(analyticSeq.at(i) , analyticPar.at(i), 1e-11);
     }
 }
 
