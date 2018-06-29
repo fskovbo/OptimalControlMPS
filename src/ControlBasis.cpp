@@ -22,6 +22,18 @@ ControlBasis::ControlBasis(stdvec& u0, stdvec& S, rowmat& f)
 
     // set current control to u0 as no c vector specified
     ucurrent = u0;
+
+    // build matrix of S*f vectors (= transpose of control Jacobian)
+    vmat = rowmat(M, std::vector<double>(N, 0));
+    
+    for(size_t i = 0; i < M; i++)
+    {       
+        for(size_t j = 0; j < N; j++)
+        {
+            vmat[i][j] = controlJacobian[j][i];
+        }
+    }
+        
 }
 
 size_t ControlBasis::getM() const
@@ -74,6 +86,36 @@ stdvec ControlBasis::convertGradient( const stdvec& gradu ) const
     }
     
     return gradc;
+}
+
+
+rowmat ControlBasis::convertHessian( const rowmat& Hessu ) const
+{
+    assert( Hessu.size() == N );
+    assert( Hessu.front().size() == N );
+
+    rowmat Hessc(M, std::vector<double>(M, 0));
+    
+    for(size_t i = 0; i < M; i++)
+    {
+        stdvec vi = vmat[i];
+        for(size_t j = i; j < M; j++)
+        {
+            stdvec vj = vmat[j];
+            stdvec Hvj;
+            Hvj.reserve(N);
+            
+            for(size_t k = 0; k < N; k++)
+            {
+                Hvj.push_back( std::inner_product(Hessu[k].begin(), Hessu[k].end(), vj.begin(), 0.0) );
+            }
+
+            Hessc[i][j] = std::inner_product(vi.begin(), vi.end(), Hvj.begin(), 0.0);
+            Hessc[j][i] = Hessc[i][j];
+        }       
+    }
+    
+    return Hessc;
 }
 
 
