@@ -102,11 +102,13 @@ rowmat OptimalControl<TimeStepper>::calcRegularizationHessian(const stdvec& cont
 {
   rowmat Hessian(N, std::vector<double>(N, 0));
   
+  double gammaOvertstep = gamma/tstep;
+
   for(size_t i = 1; i < N-1; i++)
   {
-    Hessian[i][i-1] = -gamma/tstep;
-    Hessian[i][i+1] = -gamma/tstep;
-    Hessian[i][i]   = 2.0*gamma/tstep;
+    Hessian[i][i-1] = -gammaOvertstep;
+    Hessian[i][i+1] = -gammaOvertstep;
+    Hessian[i][i]   = 2.0*gammaOvertstep;
   }
   Hessian[1][0]=0;
   Hessian[N-2][N-1]=0;
@@ -235,9 +237,10 @@ void OptimalControl<TimeStepper>::calcHessianRow( size_t rowIndex, const stdvec&
   auto normiH = norm(psiH);
 
   // Calculate diagonal term
+  double tstepSquare = tstep*tstep;
   double val1 = (overlapFactor*overlapC(xiHlist[rowIndex],psiH)).real();
   double val2 = -( divT[rowIndex] * conj(divT[rowIndex]) ).real();
-  Hessian[rowIndex][rowIndex] += tstep*tstep*(val1+val2);
+  Hessian[rowIndex][rowIndex] += tstepSquare*(val1+val2);
 
   // Off diagonal terms
   for(size_t j = rowIndex+1; j < N - 1; ++j)
@@ -245,8 +248,9 @@ void OptimalControl<TimeStepper>::calcHessianRow( size_t rowIndex, const stdvec&
     timeStepper.step(psiH,control[j-1],control[j],true);
     double val1 = (overlapFactor*overlapC(xiHlist[j],psiH)*normiH).real();
     double val2 = -( divT[rowIndex] * conj(divT[j]) ).real();
-    Hessian[rowIndex][j] += tstep*tstep*(val1+val2);
-    Hessian[j][rowIndex] += tstep*tstep*(val1+val2); // dont calculate edges
+    double result = tstepSquare*(val1+val2);
+    Hessian[rowIndex][j] += result;
+    Hessian[j][rowIndex] += result;
   }
 }
 
@@ -268,7 +272,7 @@ rowmat OptimalControl<TimeStepper>::calcHessian_parallel(const stdvec& control, 
   auto overlapFactor  = overlapC(psi_t.back(),psi_target);
   std::vector<IQMPS> xiHlist;
   xiHlist.reserve(N);
-  
+
   for(size_t i = 0; i < N; i++)
   {
     xiHlist.push_back( exactApplyMPO(timeStepper.propagatorDeriv(control[i]),xi_t[i],timeStepper.getArgs()) );
