@@ -142,7 +142,6 @@ bool BH_nlp::eval_jac_g(Ipopt::Index n, const Number* x, bool new_x,
     // data format is vector of vectors (row matrix)
     auto tJac = optControlProb.getControlJacobian();
 
-    // TODO: constraint Jac is constant -> store here and copy reference to values
     size_t ind = 0;
     for(auto& row : tJac)
     {
@@ -232,7 +231,7 @@ void BH_nlp::finalize_solution(SolverReturn status,
   printf("f(x*) = %e\n", obj_value);
 
 
-  // write initial and final control to file
+  // write initial and final control and fidelity to file
   std::vector<double> finalCoeffs(x, x + n);
 
   auto initialControl     = optControlProb.getControl(initialCoeffs);
@@ -254,7 +253,8 @@ void BH_nlp::finalize_solution(SolverReturn status,
     myfile.close();
   }
   else std::cout << "Unable to open file\n";
-  // Calculating Hessians
+
+  // Calculating GROUP and GRAPE Hessians
   auto GROUPHessian = optControlProb.getHessian(finalCoeffs);
   optControlProb.setGRAPE(true);
   auto GRAPEHessian = optControlProb.getHessian(finalControl);

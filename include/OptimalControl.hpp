@@ -25,9 +25,12 @@ private:
 
   std::vector<IQMPS> psi_t;
   std::vector<IQMPS> xi_t;
+  std::vector<IQMPS> xiHlist;
   std::vector<Cplx> divT;
 
   bool GRAPE, BFGS, calculatedXi;
+  // GRAPE = true -> no parameterization of control
+  // BFGS = true -> getHessian will not be called during optimization
   // calculatedXi tells whether Xi+divT have been calculated for same control
 
 
@@ -44,10 +47,12 @@ private:
   rowmat  calcHessian_parallel(const stdvec& control, const bool new_control = true);
   rowmat  calcHessian_sequencial(const stdvec& control, const bool new_control = true);
   stdvec  calcFidelityForAllT(const stdvec& control, const bool new_control = true);
-  void calcHessianRow(size_t rowIndex, const stdvec& control, const std::vector<IQMPS>& xiHlist, Cplx overlapFactor, rowmat& Hessian);
+  void    calcHessianRow(size_t rowIndex, const stdvec& control, Cplx overlapFactor, rowmat& Hessian);
 
 public:
+  // GRAPE constructor
   OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, size_t N, double gamma, bool BFGS = false);
+  // GROUP constructor
   OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, ControlBasis& basis, double gamma, bool BFGS = false);
 
   std::vector<IQMPS> getPsit() const;
