@@ -154,6 +154,13 @@ class BosonSite {
             }
 	    }
         else
+        if(opname == "NN")
+	    {
+            for (size_t j = 1; j<= d; j++) {
+                Op.set(indices.at(j),indicesP.at(j),j*j);
+            }
+	    }
+        else
         if(opname == "Id")
         {
             for (size_t j = 1; j<= d; j++) {

@@ -37,20 +37,27 @@ int main(int argc, char* argv[]){
   double U_i      = 2.5;
   double U_f      = 50;
 
-  int M           = input.getInt("M");
-  double gamma    = input.getReal("gamma",0);
-  bool cache      = input.getYesNo("cacheProgress",false);
-  int maxBondDim  = input.getInt("maxBondDim",100);
-  double optTol   = input.getReal("optTol",1e-7);
-  double threshold= input.getReal("threshold",1e-7);
+  int M              = input.getInt("M");
+  double gamma       = input.getReal("gamma",0);
+  bool cache         = input.getYesNo("cacheProgress",false);
+  bool useBFGS       = input.getYesNo("useBFGS",false);
+  int maxBondDim     = input.getInt("maxBondDim",100);
+  double optTol      = input.getReal("optTol",1e-7);
+  double threshold   = input.getReal("threshold",1e-7);
+  size_t threadCount = input.getInt("threadCount",2);
+  int maxIter        = input.getInt("maxIter",200);
+  double maxCPUHours = input.getReal("maxCPUHours",24);
+  double ObjScaling  = input.getReal("ObjScaling",1);
+  double maxCPUTime = maxCPUHours*60*60;
+
   
   int seed      = 1;
 
   if(argc > 2) seed = std::stoi(argv[2]);
   else printfln("Default seed used");
 
-  srand ((unsigned) seed*time(NULL));
-
+  //srand ((unsigned) seed*time(NULL));
+  srand(123456789*seed);
 
   std::cout << "Performing optimal control of Bose-Hubbard model ... \n\n";
   std::cout << " ******* Parameters used ******* \n";
@@ -63,7 +70,12 @@ int main(int argc, char* argv[]){
   std::cout << "Gamma (regularisation) ......... " << gamma << "\n";
   std::cout << "Maximum bond dimension (MPS).... " << maxBondDim << "\n";
   std::cout << "Truncation threshold (MPS) ..... " << threshold << "\n";
+  std::cout << "Use BFGS approximation ......... " << useBFGS << "\n";
+  std::cout << "Objective Scaling (IPOPT) ...... " << ObjScaling << "\n";
   std::cout << "Optimization tolerance (IPOPT).. " << optTol << "\n";
+  std::cout << "MaxITER (IPOPT) ................ " << maxIter << "\n";
+  std::cout << "MaxCPUTime (IPOPT) ............. " << maxCPUTime << "\n";
+  std::cout << "ThreadCount......................" << threadCount << "\n";
   std::cout << "Seed  .......................... " << seed << "\n\n\n";
 
 
@@ -74,7 +86,8 @@ int main(int argc, char* argv[]){
   auto psi_f    = InitializeState(sites,Npart,J,u0.back(),maxBondDim,threshold);
 
   auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",threshold,"Maxm=",maxBondDim});
-  OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,basis,gamma);
+  OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,basis,gamma,useBFGS);
+  OC.setThreadCount(threadCount);
 
   // Create a new instance of your nlp
   //  (use a SmartPtr, not raw)
@@ -91,7 +104,13 @@ int main(int argc, char* argv[]){
   //       suitable for your optimization problem.
   app->Options()->SetNumericValue("tol", optTol);
   app->Options()->SetStringValue("mu_strategy", "adaptive");
-  app->Options()->SetStringValue("hessian_approximation", "limited-memory");
+  app->Options()->SetStringValue("jac_d_constant","yes");
+  app->Options()->SetIntegerValue("max_iter",maxIter);
+  app->Options()->SetNumericValue("max_cpu_time",maxCPUTime);
+  app->Options()->SetNumericValue("obj_scaling_factor",ObjScaling);
+  if(useBFGS){
+    app->Options()->SetStringValue("hessian_approximation", "limited-memory");
+  }
   // app->Options()->SetStringValue("output_file", "logfile_BH.txt");
   // app->Options()->SetStringValue("derivative_test", "first-order");
 
@@ -140,9 +159,6 @@ int main(int argc, char* argv[]){
     myfile.close();
   }
   else std::cout << "Unable to open file\n";
-
-
-
-
+  // Calculate the final Hessian matrix
   return 0;
 }

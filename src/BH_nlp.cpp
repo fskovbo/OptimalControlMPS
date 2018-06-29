@@ -24,8 +24,12 @@ bool BH_nlp::get_nlp_info(Ipopt::Index& n, Ipopt::Index& m, Ipopt::Index& nnz_ja
   // in this example the Jacobian is dense and contains m*n = N*M nonzeros
   nnz_jac_g = m*n;
 
-  // the Hessian is approximated using L-BFGS
-  nnz_h_lag = 0;
+  // // the Hessian is approximated using L-BFGS
+  // nnz_h_lag = 0;
+
+  // the Hessian is also dense and has n*n total nonzeros, but we
+  // only need the lower left corner (since it is symmetric)
+  nnz_h_lag = (n*n+n)/2;
 
   // use the C style indexing (0-based)
   index_style = TNLP::C_STYLE;
@@ -138,7 +142,6 @@ bool BH_nlp::eval_jac_g(Ipopt::Index n, const Number* x, bool new_x,
     // data format is vector of vectors (row matrix)
     auto tJac = optControlProb.getControlJacobian();
 
-    // TODO: constraint Jac is constant -> store here and copy reference to values
     size_t ind = 0;
     for(auto& row : tJac)
     {
@@ -150,6 +153,54 @@ bool BH_nlp::eval_jac_g(Ipopt::Index n, const Number* x, bool new_x,
 
   }
 
+  return true;
+}
+
+bool BH_nlp::eval_h(Ipopt::Index n, const Number* x, bool new_x,
+                    Number obj_factor, Ipopt::Index m, const Number* lambda,
+                    bool new_lambda, Ipopt::Index nele_hess, Ipopt::Index* iRow,
+                    Ipopt::Index* jCol, Number* values)
+{
+  if (values == NULL)
+  {
+    // return the structure. This is a symmetric matrix, fill the lower left
+    // triangle only.
+    // the Hessian for this problem is actually dense
+    Ipopt::Index idx = 0;
+    for (Ipopt::Index row = 0; row < n; row++)
+    {
+      for (Ipopt::Index col = 0; col <= row; col++)
+      {
+        iRow[idx] = row;
+        jCol[idx] = col;
+        idx++;
+      }
+    }
+
+    assert(idx == nele_hess);
+  }
+  else
+  {
+    // return the values. This is a symmetric matrix, fill the lower left
+    // triangle only
+    // fill the objective portion
+
+    std::vector<double> control(x, x + n);
+    auto hess = optControlProb.getHessian(control);
+
+    Ipopt::Index idx = 0;
+    for (Ipopt::Index row = 0; row < n; row++)
+    {
+      for (Ipopt::Index col = 0; col <= row; col++)
+      {
+        values[idx] = obj_factor * hess[row][col];
+        idx++;
+      }
+    }
+
+    // constraint Hessian is zero
+  }
+  
   return true;
 }
 
@@ -180,7 +231,7 @@ void BH_nlp::finalize_solution(SolverReturn status,
   printf("f(x*) = %e\n", obj_value);
 
 
-  // write initial and final control to file
+  // write initial and final control and fidelity to file
   std::vector<double> finalCoeffs(x, x + n);
 
   auto initialControl     = optControlProb.getControl(initialCoeffs);
@@ -192,7 +243,7 @@ void BH_nlp::finalize_solution(SolverReturn status,
   std::ofstream myfile (filename);
   if (myfile.is_open())
   {
-    for (int i = 0; i < m; i++) {
+    for (int i = 0; i < times.size(); i++) {
       myfile << times.at(i) << "\t";
       myfile << initialControl.at(i) << "\t";
       myfile << initialFidelities.at(i) << "\t";
@@ -200,6 +251,39 @@ void BH_nlp::finalize_solution(SolverReturn status,
       myfile << finalFidelities.at(i) << "\n";
     }
     myfile.close();
+  }
+  else std::cout << "Unable to open file\n";
+
+  // Calculating GROUP and GRAPE Hessians
+  auto GROUPHessian = optControlProb.getHessian(finalCoeffs);
+  optControlProb.setGRAPE(true);
+  auto GRAPEHessian = optControlProb.getHessian(finalControl);
+
+  std::string filenameGROUP = "GROUPHessian.txt";
+  std::ofstream myfileGROUP (filenameGROUP);
+  if (myfileGROUP.is_open())
+  {
+      for(auto& Hrow : GROUPHessian){
+          for(auto& Hval : Hrow){
+              myfileGROUP << Hval << "\t";
+          }
+          myfileGROUP << "\n";
+      }
+       myfileGROUP.close();
+  }
+  else std::cout << "Unable to open file\n";
+
+  std::string filenameGRAPE = "GRAPEHessian.txt";
+  std::ofstream myfileGRAPE (filenameGRAPE);
+  if (myfileGRAPE.is_open())
+  {
+      for(auto& Hrow : GRAPEHessian){
+          for(auto& Hval : Hrow){
+              myfileGRAPE << Hval << "\t";
+          }
+          myfileGRAPE << "\n";
+      }
+      myfileGRAPE.close();
   }
   else std::cout << "Unable to open file\n";
 }
@@ -225,8 +309,13 @@ bool BH_nlp::intermediate_callback(AlgorithmMode mode,
       outfile << iter << "\t";
       outfile << obj_value << "\t";
       outfile << times.back() << "\t";
-      outfile << 2 + ls_trials << "\t";
-      outfile << optControlProb.getM() << "\n";
+      // Number of propogations
+      std::size_t nSteps = optControlProb.getN();
+      std::size_t Nprop = nSteps*(2 + ls_trials);
+      if (!optControlProb.useBFGS()){
+          Nprop += nSteps*(nSteps-1)/2;
+      }
+      outfile << Nprop << "\n";
 
     }
     else std::cout << "Unable to open file\n";
