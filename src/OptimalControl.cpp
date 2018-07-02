@@ -89,10 +89,10 @@ template<class TimeStepper>
 double OptimalControl<TimeStepper>::calcRegularization(const stdvec& control) const
 {
   double tmp = 0;
-  for (size_t i = 0; i < N-1; i++) {
-
-    double diff = control[i+1]-control[i];
-    tmp += diff*diff/tstep;
+  for (size_t i = 0; i < N-1; i++) 
+  {
+    double diff   = control[i+1]-control[i];
+    tmp          += diff*diff/tstep;
   }
 
   return gamma/2.0*tmp;
@@ -105,6 +105,7 @@ stdvec OptimalControl<TimeStepper>::calcRegularizationGrad(const stdvec& control
   std::vector<double> del;
   del.reserve(N);
 
+  // first term
   del.push_back(-gamma*(-5.0*control[1] + 4.0*control[2] - control[3]
                   + 2.0*control[0])/tstep);
 
@@ -112,6 +113,7 @@ stdvec OptimalControl<TimeStepper>::calcRegularizationGrad(const stdvec& control
     del.push_back(-gamma*(control[i+1] + control[i-1] - 2.0*control[i])/tstep);
   }
 
+  // final term
   del.push_back( -gamma*(-5.0*control[N-2] + 4.0*control[N-3]
                   - control[N-4] + 2.0*control[N-1])/tstep);
 
@@ -185,6 +187,7 @@ stdvec OptimalControl<TimeStepper>::getControl(const stdvec& control)
 template<class TimeStepper>
 stdvec OptimalControl<TimeStepper>::getTimeAxis( ) const
 {
+  // return vector with t at all steps from 0 to T
   std::vector<double> time;
   double tstep = timeStepper.getTstep();
   double t = 0;
@@ -203,25 +206,26 @@ stdvec OptimalControl<TimeStepper>::calcFidelityGrad(const stdvec& control, cons
 {
   if (new_control) // fill vectors required for other calc* functions 
   {
-    calculatedXi = false;
+    calculatedXi = false; // updating psi -> xi and psi not from same control
     if (BFGS) calcPsi(control);
     else      calcPsiXiDivT(control);
   }
 
-  // at this point, psi_t has been calculated with the current control
+  // At this point, psi_t has been calculated with the current control
+  // no matter the value of new_control
   
-  if (BFGS) // no Hessian -> dont save Xi in order to save memory
+  if (BFGS) // no Hessian -> dont store Xi in order to save memory
   {        
-      auto xi       = psi_target;
-      auto Toverlap = overlapC( xi , timeStepper.propagatorDeriv(control.back()) , psi_t.back() ) ;
-      divT[N-1]     = Toverlap;
-      
-      // fill vector divT
-      for(size_t i = N-1; i > 0; i--)
-      {
-        timeStepper.step(xi,control[i],control[i-1],false);      
-        divT[i-1] = overlapC( xi , timeStepper.propagatorDeriv(control[i-1]) , psi_t[i-1] ) ;
-      }
+    auto xi       = psi_target;
+    auto Toverlap = overlapC( xi , timeStepper.propagatorDeriv(control.back()) , psi_t.back() ) ;
+    divT[N-1]     = Toverlap;
+    
+    // fill vector divT (backwards) as Xi is propagated backwards
+    for(size_t i = N-1; i > 0; i--)
+    {
+      timeStepper.step(xi,control[i],control[i-1],false);      
+      divT[i-1] = overlapC( xi , timeStepper.propagatorDeriv(control[i-1]) , psi_t[i-1] ) ;
+    }
   }
   else // Hessian wil be used for optimizations
   {
@@ -250,7 +254,7 @@ void OptimalControl<TimeStepper>::calcHessianRow( size_t rowIndex, const stdvec&
 {
   // apply deriv of propagator to psi(t_i), where i = rowIndex
   auto psiH = exactApplyMPO(timeStepper.propagatorDeriv(control[rowIndex]),psi_t[rowIndex],timeStepper.getArgs());
-  auto normiH = norm(psiH); // store norm, as it is lost during propagation
+  auto normiH = norm(psiH); // store norm, as it is otherwise lost during propagation
 
   // Calculate diagonal term
   double tstepSquare = tstep*tstep;
@@ -262,7 +266,9 @@ void OptimalControl<TimeStepper>::calcHessianRow( size_t rowIndex, const stdvec&
   // Calculate off diagonal terms
   for(size_t j = rowIndex+1; j < N - 1; ++j)
   {
+    // propate psiH one step forward and calculate Hessian entry at that point
     timeStepper.step(psiH,control[j-1],control[j],true);
+
     double val1   = (overlapFactor*overlapC(xiHlist[j],psiH)*normiH).real();
     double val2   = -( divT[rowIndex] * conj(divT[j]) ).real();
     double result = tstepSquare*(val1+val2);
@@ -278,7 +284,7 @@ rowmat OptimalControl<TimeStepper>::calcHessian_parallel(const stdvec& control, 
   if (new_control) // fill vectors required for other calc* functions 
   {
     // it is assumed that BFGS is false
-    calculatedXi = false;
+    calculatedXi = false; // updating psi -> xi and psi not from same control
     calcPsiXiDivT(control);
   }
   if (!calculatedXi) // if psi has been calculated earler, fill remaining vectors
@@ -290,16 +296,19 @@ rowmat OptimalControl<TimeStepper>::calcHessian_parallel(const stdvec& control, 
   rowmat Hessian      = calcRegularizationHessian(control);
   auto overlapFactor  = overlapC(psi_t.back(),psi_target);
 
+  // precalculate overlaps between Xi(t_i) and propderiv
   for(size_t i = 0; i < N; i++)
   {
     xiHlist[i] = exactApplyMPO(timeStepper.propagatorDeriv(control[i]),xi_t[i],timeStepper.getArgs());
   }
 
+  // parallel calculation of Hessian rows
   size_t nextHessianValueIndex = 1; // Do not calculate the first row, which is on the Hessian Boundary.
   std::vector<std::thread> hessianThreads;
   std::mutex syncMutex;
   hessianThreads.reserve(threadCount); 
 
+  // lambda passed to threads
   auto threadMainCode = [&syncMutex, &nextHessianValueIndex, &control, overlapFactor, &Hessian, this]()
   {
     while(nextHessianValueIndex < N - 1)
@@ -309,7 +318,7 @@ rowmat OptimalControl<TimeStepper>::calcHessian_parallel(const stdvec& control, 
       currentIndex = nextHessianValueIndex;
       nextHessianValueIndex++;
       syncMutex.unlock();
-      if (currentIndex < N - 1) // Check that another thread did not just took the last job.
+      if (currentIndex < N - 1) // Check that another thread did not just take the last job.
       {
         calcHessianRow(currentIndex, control, overlapFactor, Hessian);
       }
@@ -335,7 +344,7 @@ rowmat OptimalControl<TimeStepper>::calcHessian_sequencial(const stdvec& control
   if (new_control) // fill vectors required for other calc* functions 
   {
     // it is assumed that BFGS is false
-    calculatedXi = false;
+    calculatedXi = false; // updating psi -> xi and psi not from same control
     calcPsiXiDivT(control);
   }
   if (!calculatedXi) // if psi has been calculated earler, fill remaining vectors
@@ -347,11 +356,13 @@ rowmat OptimalControl<TimeStepper>::calcHessian_sequencial(const stdvec& control
   rowmat Hessian      = calcRegularizationHessian(control);
   auto overlapFactor  = overlapC(psi_t.back(),psi_target);
   
+  // precalculate overlaps between Xi(t_i) and propderiv
   for(size_t i = 0; i < N; i++)
   {
     xiHlist[i] = exactApplyMPO(timeStepper.propagatorDeriv(control[i]),xi_t[i],timeStepper.getArgs());
   }
 
+  // sequencial calculation of Hessian rows
   for(size_t i = 1; i < N-1; i++) // dont calculate edges of Hessian as endpoints of control are fixed
   {
     calcHessianRow(i, control, overlapFactor, Hessian);
@@ -373,6 +384,8 @@ void OptimalControl<TimeStepper>::calcPsi(const stdvec& control)
     timeStepper.step(psi0,control[i],control[i+1],propagateForward);
     psi_t[i+1] = psi0;
   }
+
+  // updating psi -> xi and psi not from same control
   calculatedXi = false;
 }
 
@@ -389,6 +402,7 @@ void OptimalControl<TimeStepper>::calcXi(const stdvec& control)
     xi_t[i-1] = xiT;
   }
 
+  // assumes psi has already been calculated using the same control
   calculatedXi = true;
 }
 
@@ -396,7 +410,7 @@ template<class TimeStepper>
 void OptimalControl<TimeStepper>::calcDivT(const stdvec& control)
 {
   assert(calculatedXi);
-  // assumes Xi and Psi are calculated using the same control
+  // Xi and Psi must be calculated using the same control
   
   for(size_t i = 0; i < N; i++)
   {
@@ -428,7 +442,7 @@ double OptimalControl<TimeStepper>::calcCost(const stdvec& control, const bool n
 {
   if (new_control) // calculate psi_t required for other calc* functions 
   {
-    calculatedXi = false;
+    calculatedXi = false; // updating psi -> xi and psi not from same control
     calcPsi(control);
   }
 
@@ -456,7 +470,9 @@ stdvec OptimalControl<TimeStepper>::calcAnalyticGradient(const stdvec& control, 
 template<class TimeStepper>
 stdvec OptimalControl<TimeStepper>::calcFidelityForAllT(const stdvec& control, const bool new_control)
 {
-  if (new_control) {
+  if (new_control)
+  {
+    calculatedXi = false; // updating psi -> xi and psi not from same control
     calcPsi(control);
   }
   
@@ -466,6 +482,7 @@ stdvec OptimalControl<TimeStepper>::calcFidelityForAllT(const stdvec& control, c
   double re, im;
   for (size_t i = 0; i < N; i++)
   {
+    // calculate fidelity at each time step
     overlap(psi_target,psi_t[i],re,im);
     fid.push_back(re*re+im*im);
   }

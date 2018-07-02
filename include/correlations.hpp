@@ -7,12 +7,14 @@
 using namespace itensor;
 
 
-inline Cplx correlationFunction(SiteSet const& sites, IQMPS& psi, std::string const& opname1, int i, std::string const& opname2, int j){
+inline Cplx correlationFunction(SiteSet const& sites, IQMPS& psi, std::string const& opname1, int i, std::string const& opname2, int j)
+{
+  // get operators at site i and j  
   auto op_i = sites.op(opname1,i);
   auto op_j = sites.op(opname2,j);
 
-
-  if (j == i) {
+  if (j == i)
+  {
     psi.position(i);
 
     auto ket = psi.A(i)* op_j*prime(op_i,Site);
@@ -38,7 +40,8 @@ inline Cplx correlationFunction(SiteSet const& sites, IQMPS& psi, std::string co
   auto ir = commonIndex(psi.A(i),psi.A(i+1),Link);
 
   auto C = psi.A(i)*op_i*prime(dag(psi.A(i)),Site,ir);
-  for(int k = i+1; k < j; ++k){
+  for(int k = i+1; k < j; ++k)
+  {
     C *= psi.A(k);
     C *= prime(dag(psi.A(k)),Link);
   }
@@ -53,15 +56,21 @@ inline Cplx correlationFunction(SiteSet const& sites, IQMPS& psi, std::string co
 
 inline ITensor correlationMatrix(SiteSet const& sites, IQMPS& psi, std::string const& opname1, std::string const& opname2){
   int N = sites.N();
-  itensor::Index rho_i("rho i",N),
-        rho_j = prime(rho_i);
+  // initialize indices of correlation matrix
+  itensor::Index rho_i("rho i",N);
+  itensor::Index rho_j = prime(rho_i);
 
   ITensor rho(rho_i,rho_j);
   Cplx Cij;
-  for (int i = 1; i <= N; ++i) {
+  for (int i = 1; i <= N; ++i)
+  {
+    // calculate diagonal elements
     Cij = correlationFunction(sites,psi,opname1,i,opname2,i);
     rho.set(rho_i(i),rho_j(i), Cij);
-    for (int j = i+1; j <= N; ++j) {
+
+    for (int j = i+1; j <= N; ++j)
+    {
+      // calculate off-diagonal elements
       Cij = correlationFunction(sites,psi,opname1,i,opname2,j);
       rho.set(rho_i(i),rho_j(j), Cij);
       rho.set(rho_i(j),rho_j(i), conj(Cij));
@@ -70,20 +79,26 @@ inline ITensor correlationMatrix(SiteSet const& sites, IQMPS& psi, std::string c
   return rho;
 }
 
-inline Real correlationTerm(SiteSet const& sites, IQMPS& psi, std::string const& opname1, std::string const& opname2){
+inline Real correlationTerm(SiteSet const& sites, IQMPS& psi, std::string const& opname1, std::string const& opname2)
+{
+  // get correlation matrix of operators
   auto rho = correlationMatrix(sites,psi,opname1,opname2);
 
   ITensor V, D;
+  // diagonalize correlation matrix
   diagHermitian(rho,V,D, {"Maxm",1});
 
   auto indices = D.inds();
   auto index1 = indices.index(1);
   auto index2 = indices.index(2);
 
+  // return largest eigenvalue of correlation matrix
   return D.real(index1(1),index2(1));
 }
 
-inline Cplx expectationValue(SiteSet const& sites, IQMPS& psi, std::string const& opname, int i){
+inline Cplx expectationValue(SiteSet const& sites, IQMPS& psi, std::string const& opname, int i)
+{
+  // get expectation value of operator at site i
   auto op = sites.op(opname,i);
   psi.position(i);
   auto ket = psi.A(i);
@@ -91,7 +106,9 @@ inline Cplx expectationValue(SiteSet const& sites, IQMPS& psi, std::string const
   return (bra*op*ket).cplx();
 }
 
-inline std::vector<Cplx> expectationValues(SiteSet const& sites, IQMPS& psi, std::string const& opname){
+inline std::vector<Cplx> expectationValues(SiteSet const& sites, IQMPS& psi, std::string const& opname)
+{
+  // get expectation values of operator at each site
   std::vector<Cplx> expVals;
   for (int i = 1; i <= sites.N(); i++) {
     expVals.push_back( expectationValue(sites,psi,opname,i) );

@@ -22,11 +22,14 @@ public:
 
 };
 
-ControlBasis ControlBasisFactory::buildChoppedSineBasis(stdvec& u0, double tstep, double T, size_t M){
+ControlBasis ControlBasisFactory::buildChoppedSineBasis(stdvec& u0, double tstep, double T, size_t M)
+{
   size_t N = u0.size();
   assert( N-(1 + T/tstep) < 1e-5 );
 
   auto x    = SeedGenerator::linspace(0,100,N);
+
+  // build Shape functions
   auto S    = SeedGenerator::sigmoid(x,8.0,1.1);
   auto S2   = SeedGenerator::sigmoid(x,-8.0,100-1.1);
 
@@ -36,6 +39,7 @@ ControlBasis ControlBasisFactory::buildChoppedSineBasis(stdvec& u0, double tstep
   S.at(0)   = 0;
   S.at(N-1) = 0;
 
+  // build sin( omega_n*pi*t/T ) matrix
   rowmat f(N, std::vector<double>(M, 0));      
   for(size_t i = 0; i < N; i++)
   {

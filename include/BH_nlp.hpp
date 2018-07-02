@@ -26,10 +26,8 @@ private:
   bool cacheProgress;
 
 public:
-  /** default constructor */
   BH_nlp(OC_BH& optControlProb, bool cacheProgress = false);
 
-  /** default destructor */
   virtual ~BH_nlp();
 
   virtual bool get_nlp_info(Ipopt::Index& n, Ipopt::Index& m, Ipopt::Index& nnz_jac_g,
