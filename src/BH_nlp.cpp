@@ -255,37 +255,37 @@ void BH_nlp::finalize_solution(SolverReturn status,
   else std::cout << "Unable to open file\n";
 
   // Calculating GROUP and GRAPE Hessians
-  auto GROUPHessian = optControlProb.getHessian(finalCoeffs);
-  optControlProb.setGRAPE(true);
-  auto GRAPEHessian = optControlProb.getHessian(finalControl);
+//  auto GROUPHessian = optControlProb.getHessian(finalCoeffs);
+//  optControlProb.setGRAPE(true);
+//  auto GRAPEHessian = optControlProb.getHessian(finalControl);
 
-  std::string filenameGROUP = "GROUPHessian.txt";
-  std::ofstream myfileGROUP (filenameGROUP);
-  if (myfileGROUP.is_open())
-  {
-      for(auto& Hrow : GROUPHessian){
-          for(auto& Hval : Hrow){
-              myfileGROUP << Hval << "\t";
-          }
-          myfileGROUP << "\n";
-      }
-       myfileGROUP.close();
-  }
-  else std::cout << "Unable to open file\n";
+//  std::string filenameGROUP = "GROUPHessian.txt";
+//  std::ofstream myfileGROUP (filenameGROUP);
+//  if (myfileGROUP.is_open())
+//  {
+//      for(auto& Hrow : GROUPHessian){
+//          for(auto& Hval : Hrow){
+//              myfileGROUP << Hval << "\t";
+//          }
+//          myfileGROUP << "\n";
+//      }
+//       myfileGROUP.close();
+//  }
+//  else std::cout << "Unable to open file\n";
 
-  std::string filenameGRAPE = "GRAPEHessian.txt";
-  std::ofstream myfileGRAPE (filenameGRAPE);
-  if (myfileGRAPE.is_open())
-  {
-      for(auto& Hrow : GRAPEHessian){
-          for(auto& Hval : Hrow){
-              myfileGRAPE << Hval << "\t";
-          }
-          myfileGRAPE << "\n";
-      }
-      myfileGRAPE.close();
-  }
-  else std::cout << "Unable to open file\n";
+//  std::string filenameGRAPE = "GRAPEHessian.txt";
+//  std::ofstream myfileGRAPE (filenameGRAPE);
+//  if (myfileGRAPE.is_open())
+//  {
+//      for(auto& Hrow : GRAPEHessian){
+//          for(auto& Hval : Hrow){
+//              myfileGRAPE << Hval << "\t";
+//          }
+//          myfileGRAPE << "\n";
+//      }
+//      myfileGRAPE.close();
+//  }
+//  else std::cout << "Unable to open file\n";
 }
 
 bool BH_nlp::intermediate_callback(AlgorithmMode mode,

@@ -6,9 +6,9 @@
 
 template<class TimeStepper>
 OptimalControl<TimeStepper>::
-OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, size_t N, double gamma, bool BFGS)
+OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, size_t N, double gamma, bool BFGS, bool parForwardBack)
   : psi_target(psi_target), psi_init(psi_init), N(N), gamma(gamma),
-    timeStepper(timeStepper), tstep(timeStepper.getTstep()), BFGS(BFGS)
+    timeStepper(timeStepper), tstep(timeStepper.getTstep()), BFGS(BFGS), parForwardBack(parForwardBack)
 {
   // no ControlBasis is supplied -> use GRAPE algorithm
   basis         = ControlBasis();
@@ -29,9 +29,9 @@ OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, siz
 
 template<class TimeStepper>
 OptimalControl<TimeStepper>::
-OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, ControlBasis& basis, double gamma, bool BFGS)
+OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, ControlBasis& basis, double gamma, bool BFGS, bool parForwardBack)
   : psi_target(psi_target), psi_init(psi_init), gamma(gamma),
-    timeStepper(timeStepper), basis(basis), tstep(timeStepper.getTstep()), BFGS(BFGS)
+    timeStepper(timeStepper), basis(basis), tstep(timeStepper.getTstep()), BFGS(BFGS), parForwardBack(parForwardBack)
 {
   // a ControlBasis is supplied -> use GROUP algorithm
   GRAPE         = false;
@@ -421,7 +421,7 @@ void OptimalControl<TimeStepper>::calcDivT(const stdvec& control)
 template<class TimeStepper>
 void OptimalControl<TimeStepper>::calcPsiXiDivT(const stdvec& control)
 {
-  if (threadCount > 1) // parallel computation of Psi and Xi
+  if (threadCount > 1 && parForwardBack) // parallel computation of Psi and Xi
   {
     std::thread psiThread(std::bind(&OptimalControl<TimeStepper>::calcPsi, this, control));
     std::thread xiThread(std::bind(&OptimalControl<TimeStepper>::calcXi, this, control));
@@ -430,8 +430,8 @@ void OptimalControl<TimeStepper>::calcPsiXiDivT(const stdvec& control)
   }
   else // sequencial computation of Psi and Xi
   {
-    calcPsi(control);
-    calcXi(control);
+  calcPsi(control);
+  calcXi(control);
   }
     
   calcDivT(control);

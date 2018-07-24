@@ -28,7 +28,7 @@ private:
   std::vector<IQMPS> xiHlist;
   std::vector<Cplx> divT;
 
-  bool GRAPE, BFGS, calculatedXi;
+  bool GRAPE, BFGS, calculatedXi, parForwardBack;
   // GRAPE = true -> no parameterization of control
   // BFGS = true -> getHessian will not be called during optimization
   // calculatedXi tells whether Xi+divT have been calculated for same control
@@ -51,9 +51,9 @@ private:
 
 public:
   // GRAPE constructor
-  OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, size_t N, double gamma, bool BFGS = false);
+  OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, size_t N, double gamma, bool BFGS = false, bool parForwardBack = false);
   // GROUP constructor
-  OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, ControlBasis& basis, double gamma, bool BFGS = false);
+  OptimalControl(IQMPS& psi_target, IQMPS& psi_init, TimeStepper& timeStepper, ControlBasis& basis, double gamma, bool BFGS = false, bool parForwardBack = false);
 
   std::vector<IQMPS> getPsit() const;
   size_t getM() const;

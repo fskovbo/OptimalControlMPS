@@ -37,18 +37,19 @@ int main(int argc, char* argv[]){
   double U_i      = 2.5;
   double U_f      = 50;
 
-  int M              = input.getInt("M");
-  double gamma       = input.getReal("gamma",0);
-  bool cache         = input.getYesNo("cacheProgress",false);
-  bool useBFGS       = input.getYesNo("useBFGS",false);
-  int maxBondDim     = input.getInt("maxBondDim",100);
-  double optTol      = input.getReal("optTol",1e-7);
-  double threshold   = input.getReal("threshold",1e-7);
-  size_t threadCount = input.getInt("threadCount",2);
-  int maxIter        = input.getInt("maxIter",200);
-  double maxCPUHours = input.getReal("maxCPUHours",24);
-  double ObjScaling  = input.getReal("ObjScaling",1);
-  double maxCPUTime = maxCPUHours*60*60;
+  int M               = input.getInt("M");
+  double gamma        = input.getReal("gamma",0);
+  bool cache          = input.getYesNo("cacheProgress",false);
+  bool useBFGS        = input.getYesNo("useBFGS",false);
+  int maxBondDim      = input.getInt("maxBondDim",100);
+  double optTol       = input.getReal("optTol",1e-7);
+  double threshold    = input.getReal("threshold",1e-7);
+  size_t threadCount  = input.getInt("threadCount",2);
+  int maxIter         = input.getInt("maxIter",200);
+  double maxCPUHours  = input.getReal("maxCPUHours",24);
+  double ObjScaling   = input.getReal("ObjScaling",1);
+  bool parForwardBack = input.getYesNo("parForwardBack",false);
+  double maxCPUTime   = maxCPUHours*60*60;
 
   
   int seed      = 1;
@@ -75,7 +76,8 @@ int main(int argc, char* argv[]){
   std::cout << "Optimization tolerance (IPOPT).. " << optTol << "\n";
   std::cout << "MaxITER (IPOPT) ................ " << maxIter << "\n";
   std::cout << "MaxCPUTime (IPOPT) ............. " << maxCPUTime << "\n";
-  std::cout << "ThreadCount......................" << threadCount << "\n";
+  std::cout << "ThreadCount .................... " << threadCount << "\n";
+  std::cout << "Parallel forward/backward ...... " << parForwardBack << "\n";
   std::cout << "Seed  .......................... " << seed << "\n\n\n";
 
 
@@ -86,7 +88,7 @@ int main(int argc, char* argv[]){
   auto psi_f    = InitializeState(sites,Npart,J,u0.back(),maxBondDim,threshold);
 
   auto stepper  = BH_tDMRG(sites,J,tstep,{"Cutoff=",threshold,"Maxm=",maxBondDim});
-  OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,basis,gamma,useBFGS);
+  OptimalControl<BH_tDMRG> OC(psi_f,psi_i,stepper,basis,gamma,useBFGS,parForwardBack);
   OC.setThreadCount(threadCount);
 
   // Create a new instance of your nlp
