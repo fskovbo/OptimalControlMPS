@@ -51,7 +51,6 @@ int main(int argc, char* argv[]){
   bool parForwardBack = input.getYesNo("parForwardBack",false);
   double maxCPUTime   = maxCPUHours*60*60;
 
-  
   int seed      = 1;
 
   if(argc > 2) seed = std::stoi(argv[2]);
@@ -145,22 +144,45 @@ int main(int argc, char* argv[]){
   // of number operator, and save to file.
   auto psi_t = OC.getPsit();
   auto times = OC.getTimeAxis();
-  std::string filename = "ExpectationN.txt";
+
+  std::string filename = "Expectations.txt";
   std::ofstream myfile (filename);
   if (myfile.is_open())
   {
-    size_t ind = 0;
-    for (auto& psi : psi_t){
-      myfile << times.at(ind++) << "\t";
-      auto expn = expectationValues(sites,psi,"N");
-      for (auto& val : expn){
-        myfile << val.real() << "\t";
+      // Calculation for the initial state
+      auto expn_i     = expectationValues(sites,psi_i,"N");
+      auto expnn_i    = expectationValues(sites,psi_i,"NN");
+      std::vector<double> F2_i;
+      for(size_t i = 0; i < N; i++)
+      {
+          F2_i.push_back( expnn_i.at(i).real() - expn_i.at(i).real()*expn_i.at(i).real() );
       }
-      myfile << "\n";
-    }
-    myfile.close();
+      size_t ind = 0;
+      for (auto& psi : psi_t){
+          auto expn   = expectationValues(sites,psi,"N");
+          auto expnn  = expectationValues(sites,psi,"NN");
+
+          double rhoval = 0;
+          double F2val = 0;
+          for(size_t i = 0; i < N; i++)
+          {
+              rhoval  += fabs(expn.at(i).real() - 1.0);
+              F2val   += (expnn.at(i).real() - expn.at(i).real()*expn.at(i).real())/F2_i.at(i);
+          }
+
+          myfile << times.at(ind++) << "\t";
+          for (auto& val : expn){
+              myfile << val.real() << "\t";
+          }
+          for (auto& val : expnn){
+              myfile << val.real() << "\t";
+          }
+          myfile << rhoval << "\t";
+          myfile << F2val << "\t";
+          myfile << "\n";
+      }
+      myfile.close();
   }
   else std::cout << "Unable to open file\n";
-  // Calculate the final Hessian matrix
   return 0;
 }
