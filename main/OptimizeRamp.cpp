@@ -166,9 +166,11 @@ int main(int argc, char* argv[]){
           double F2val = 0;
           for(size_t i = 0; i < N; i++)
           {
-              rhoval  += fabs(expn.at(i).real() - 1.0);
+              rhoval  += std::abs(expn.at(i).real() - 1.0);
               F2val   += (expnn.at(i).real() - expn.at(i).real()*expn.at(i).real())/F2_i.at(i);
           }
+	  rhoval = rhoval/N;
+	  F2val = F2val/N;
 
           myfile << times.at(ind++) << "\t";
           for (auto& val : expn){
